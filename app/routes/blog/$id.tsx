@@ -4,6 +4,7 @@ import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { BlogForm } from "~/components/blog/blog-form";
+import { DashboardLayout } from "~/components/dashboard/layout";
 import type { Route } from "./+types/$id";
 
 export function meta({}: Route.MetaArgs) {
@@ -124,16 +125,16 @@ export default function EditBlogPost() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
+      <DashboardLayout>
         <div className="mx-auto max-w-4xl">
           <p className="font-['Satoshi'] text-gray-600">Post not found</p>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <DashboardLayout>
       <div className="mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="font-['Clash_Display'] text-4xl font-bold text-neutral-900">
@@ -192,7 +193,7 @@ export default function EditBlogPost() {
           />
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 

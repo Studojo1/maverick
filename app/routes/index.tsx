@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
+import { DashboardLayout } from "~/components/dashboard/layout";
 import type { Route } from "./+types/index";
 
 export function meta({}: Route.MetaArgs) {
@@ -130,7 +131,7 @@ export default function BlogList() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <DashboardLayout>
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -274,7 +275,7 @@ export default function BlogList() {
           </>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 

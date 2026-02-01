@@ -1,7 +1,7 @@
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { ServerRouter, UNSAFE_withComponentProps, Outlet, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, Meta, Links, ScrollRestoration, Scripts, useNavigate, Link, useSearchParams, useParams } from "react-router";
+import { ServerRouter, UNSAFE_withComponentProps, Outlet, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, Meta, Links, ScrollRestoration, Scripts, useNavigate, Link, useSearchParams, useParams, useLoaderData } from "react-router";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { Toaster, toast } from "sonner";
@@ -18,14 +18,16 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
-import { FiBold, FiItalic, FiUnderline, FiMinus, FiCode, FiList, FiType, FiMessageSquare, FiAlignLeft, FiAlignCenter, FiAlignRight, FiLink, FiUpload, FiImage, FiEdit2, FiX } from "react-icons/fi";
+import { FiBold, FiItalic, FiUnderline, FiMinus, FiCode, FiList, FiType, FiMessageSquare, FiAlignLeft, FiAlignCenter, FiAlignRight, FiLink, FiUpload, FiImage, FiEdit2, FiX, FiCopy } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { sql } from "drizzle-orm";
+import { jwtVerify, createRemoteJWKSet } from "jose";
 import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
 import slugify from "slugify";
 import readingTime from "reading-time";
+import { randomBytes } from "crypto";
 const streamTimeout = 5e3;
 function handleRequest(request, responseStatusCode, responseHeaders, routerContext, loadContext) {
   if (request.method.toUpperCase() === "HEAD") {
@@ -296,7 +298,7 @@ function useOpsGuard() {
   }, [session, isPending, navigate]);
   return { isAuthorized, isPending };
 }
-function meta$3({}) {
+function meta$7({}) {
   return [{
     title: "Maverick – Blog Editor"
   }, {
@@ -304,7 +306,7 @@ function meta$3({}) {
     content: "Blog editor dashboard"
   }];
 }
-const index = UNSAFE_withComponentProps(function BlogList() {
+const index$1 = UNSAFE_withComponentProps(function BlogList() {
   const {
     isAuthorized,
     isPending
@@ -543,10 +545,10 @@ const index = UNSAFE_withComponentProps(function BlogList() {
 });
 const route1 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: index,
-  meta: meta$3
+  default: index$1,
+  meta: meta$7
 }, Symbol.toStringTag, { value: "Module" }));
-function meta$2({}) {
+function meta$6({}) {
   return [{
     title: "Maverick Login – Studojo"
   }, {
@@ -643,7 +645,7 @@ const login = UNSAFE_withComponentProps(function MaverickLogin() {
           children: "Maverick"
         }), /* @__PURE__ */ jsx("p", {
           className: "mt-2 font-['Satoshi'] text-sm font-normal leading-6 text-gray-600",
-          children: "Sign in to access the blog editor"
+          children: "Sign in to access the Ops platform."
         })]
       }), /* @__PURE__ */ jsxs("div", {
         className: "rounded-2xl bg-white p-8 shadow-[4px_4px_0px_0px_rgba(25,26,35,1)] outline outline-2 outline-offset-[-2px] outline-black",
@@ -723,7 +725,7 @@ const login = UNSAFE_withComponentProps(function MaverickLogin() {
 const route2 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: login,
-  meta: meta$2
+  meta: meta$6
 }, Symbol.toStringTag, { value: "Module" }));
 function TipTapEditor({ content = "", onChange, placeholder = "Start writing..." }) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -1681,7 +1683,7 @@ function BlogForm({ initialData, onSubmit, onCancel }) {
     ] })
   ] });
 }
-function meta$1({}) {
+function meta$5({}) {
   return [{
     title: "New Blog Post – Maverick"
   }, {
@@ -1689,7 +1691,7 @@ function meta$1({}) {
     content: "Create a new blog post"
   }];
 }
-const _new = UNSAFE_withComponentProps(function NewBlogPost() {
+const _new$1 = UNSAFE_withComponentProps(function NewBlogPost() {
   const navigate = useNavigate();
   const {
     isAuthorized,
@@ -1764,10 +1766,10 @@ const _new = UNSAFE_withComponentProps(function NewBlogPost() {
 });
 const route3 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: _new,
-  meta: meta$1
+  default: _new$1,
+  meta: meta$5
 }, Symbol.toStringTag, { value: "Module" }));
-function meta({}) {
+function meta$4({}) {
   return [{
     title: "Edit Blog Post – Maverick"
   }, {
@@ -1775,7 +1777,7 @@ function meta({}) {
     content: "Edit blog post"
   }];
 }
-const $id = UNSAFE_withComponentProps(function EditBlogPost() {
+const $id$1 = UNSAFE_withComponentProps(function EditBlogPost() {
   const navigate = useNavigate();
   const {
     id
@@ -1950,14 +1952,41 @@ const $id = UNSAFE_withComponentProps(function EditBlogPost() {
 });
 const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: $id,
-  meta
+  default: $id$1,
+  meta: meta$4
 }, Symbol.toStringTag, { value: "Module" }));
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 const db = drizzle({ client: pool });
-async function loader$3({
+const JWKS_URL = process.env.JWKS_URL || process.env.VITE_AUTH_URL ? `${process.env.VITE_AUTH_URL || "http://localhost:3000"}/api/auth/jwks` : "http://localhost:3000/api/auth/jwks";
+let jwks = null;
+function getJWKS() {
+  if (!jwks) {
+    jwks = createRemoteJWKSet(new URL(JWKS_URL));
+  }
+  return jwks;
+}
+async function verifyToken(token) {
+  try {
+    const jwksSet = getJWKS();
+    const { payload } = await jwtVerify(token, jwksSet, {
+      algorithms: ["RS256", "ES256", "EdDSA"]
+      // Common algorithms used by Better Auth
+    });
+    const userId = payload.sub || payload.userId;
+    if (!userId || typeof userId !== "string") {
+      return null;
+    }
+    return userId;
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("JWT verification failed:", error);
+    }
+    return null;
+  }
+}
+async function loader$8({
   request
 }) {
   const authHeader = request.headers.get("Authorization");
@@ -1970,19 +1999,10 @@ async function loader$3({
   }
   const token = authHeader.substring(7);
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
-      return Response.json({
-        error: "Invalid token format"
-      }, {
-        status: 401
-      });
-    }
-    const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
-    const userId = payload.sub || payload.userId;
+    const userId = await verifyToken(token);
     if (!userId) {
       return Response.json({
-        error: "Token missing user ID"
+        error: "Invalid or expired token"
       }, {
         status: 401
       });
@@ -2017,21 +2037,10 @@ async function loader$3({
 }
 const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  loader: loader$3
+  loader: loader$8
 }, Symbol.toStringTag, { value: "Module" }));
-function getUserIdFromToken(token) {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
-      return null;
-    }
-    const payload = JSON.parse(
-      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()
-    );
-    return payload.sub || payload.userId || null;
-  } catch {
-    return null;
-  }
+async function getUserIdFromToken(token) {
+  return verifyToken(token);
 }
 async function getUserInfo(userId) {
   try {
@@ -2058,7 +2067,7 @@ async function getUserFromRequest(request) {
     return null;
   }
   const token = authHeader.substring(7);
-  const userId = getUserIdFromToken(token);
+  const userId = await getUserIdFromToken(token);
   if (!userId) {
     return null;
   }
@@ -2113,7 +2122,61 @@ async function uploadBlogImage(file, filename) {
   }
   return `/api/images/${blobName}`;
 }
-async function action$2({
+const MAGIC_BYTES = {
+  "image/jpeg": [[255, 216, 255]],
+  "image/png": [[137, 80, 78, 71, 13, 10, 26, 10]],
+  "image/webp": [[82, 73, 70, 70], [87, 69, 66, 80]]
+  // RIFF...WEBP
+};
+async function validateFileContent(file, expectedMimeType) {
+  const signatures = MAGIC_BYTES[expectedMimeType];
+  if (!signatures) {
+    return false;
+  }
+  const arrayBuffer = await file.slice(0, 12).arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  for (const signature of signatures) {
+    let matches = true;
+    for (let i = 0; i < signature.length; i++) {
+      if (bytes[i] !== signature[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      return true;
+    }
+  }
+  return false;
+}
+function sanitizeFilename(filename) {
+  const basename2 = filename.split("/").pop() || filename.split("\\").pop() || filename;
+  const sanitized = basename2.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const cleaned = sanitized.replace(/^\.+/, "").trim();
+  if (!cleaned) {
+    return "image";
+  }
+  const maxLength = 255;
+  if (cleaned.length > maxLength) {
+    const ext = cleaned.substring(cleaned.lastIndexOf("."));
+    const name = cleaned.substring(0, maxLength - ext.length);
+    return name + ext;
+  }
+  return cleaned;
+}
+function generateUniqueFilename(originalFilename) {
+  const sanitized = sanitizeFilename(originalFilename);
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8);
+  const lastDot = sanitized.lastIndexOf(".");
+  if (lastDot > 0) {
+    const name = sanitized.substring(0, lastDot);
+    const ext = sanitized.substring(lastDot);
+    return `${timestamp}-${random}-${name}${ext}`;
+  }
+  return `${timestamp}-${random}-${sanitized}`;
+}
+async function action$6({
   request
 }) {
   const user = await getUserFromRequest(request);
@@ -2150,9 +2213,18 @@ async function action$2({
     });
   }
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
+  const mimeType = file.type || "image/jpeg";
+  if (!allowedTypes.includes(mimeType)) {
     return Response.json({
       error: "Invalid file type. Only JPEG, PNG, and WebP are allowed."
+    }, {
+      status: 400
+    });
+  }
+  const isValidContent = await validateFileContent(file, mimeType);
+  if (!isValidContent) {
+    return Response.json({
+      error: "File content does not match declared file type. Possible file type spoofing."
     }, {
       status: 400
     });
@@ -2166,10 +2238,11 @@ async function action$2({
     });
   }
   try {
-    const url = await uploadBlogImage(file, file.name);
+    const uniqueFilename = generateUniqueFilename(file.name);
+    const url = await uploadBlogImage(file, uniqueFilename);
     return Response.json({
       url,
-      filename: file.name
+      filename: uniqueFilename
     });
   } catch (error) {
     console.error("Error uploading image:", error);
@@ -2183,9 +2256,9 @@ async function action$2({
 }
 const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  action: action$2
+  action: action$6
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$2({
+async function loader$7({
   request,
   params
 }) {
@@ -2228,7 +2301,7 @@ async function loader$2({
     post: result.rows[0]
   });
 }
-async function action$1({
+async function action$5({
   request,
   params
 }) {
@@ -2394,10 +2467,10 @@ async function action$1({
 }
 const route7 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  action: action$1,
-  loader: loader$2
+  action: action$5,
+  loader: loader$7
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$1({
+async function loader$6({
   request
 }) {
   const user = await getUserFromRequest(request);
@@ -2453,7 +2526,7 @@ async function loader$1({
     totalPages: Math.ceil(total / limit)
   });
 }
-async function action({
+async function action$4({
   request
 }) {
   const user = await getUserFromRequest(request);
@@ -2542,14 +2615,14 @@ async function action({
 }
 const route8 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  action,
-  loader: loader$1
+  action: action$4,
+  loader: loader$6
 }, Symbol.toStringTag, { value: "Module" }));
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME || "";
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY || "";
 const useLocalStack = process.env.USE_LOCALSTACK === "true";
 const localStackEndpoint = process.env.LOCALSTACK_ENDPOINT || "http://localhost:4566";
-async function loader({
+async function loader$5({
   params
 }) {
   let path = params["*"];
@@ -2634,9 +2707,1664 @@ async function loader({
 }
 const route9 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
+  loader: loader$5
+}, Symbol.toStringTag, { value: "Module" }));
+function meta$3({}) {
+  return [{
+    title: "Internships – Maverick"
+  }, {
+    name: "description",
+    content: "Manage internship listings"
+  }];
+}
+const index = UNSAFE_withComponentProps(function InternshipsList() {
+  const {
+    isAuthorized,
+    isPending
+  } = useOpsGuard();
+  const [internships, setInternships] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    if (isAuthorized) {
+      loadInternships();
+    }
+  }, [isAuthorized, page, statusFilter, search]);
+  const loadInternships = async () => {
+    try {
+      setLoading(true);
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10"
+      });
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      if (search) {
+        params.append("search", search);
+      }
+      const response = await fetch(`/api/internships?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load internships");
+      }
+      const data = await response.json();
+      setInternships(data.internships || []);
+      setTotalPages(data.totalPages || 1);
+    } catch (error) {
+      console.error("Error loading internships:", error);
+      toast.error("Failed to load internships");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this internship?")) {
+      return;
+    }
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch(`/api/internships/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete internship");
+      }
+      toast.success("Internship deleted successfully");
+      loadInternships();
+    } catch (error) {
+      console.error("Error deleting internship:", error);
+      toast.error("Failed to delete internship");
+    }
+  };
+  if (isPending) {
+    return /* @__PURE__ */ jsx("div", {
+      className: "flex min-h-screen items-center justify-center",
+      children: /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "Loading..."
+      })
+    });
+  }
+  if (!isAuthorized) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen bg-white p-8",
+    children: /* @__PURE__ */ jsxs("div", {
+      className: "mx-auto max-w-7xl",
+      children: [/* @__PURE__ */ jsxs("div", {
+        className: "mb-8 flex items-center justify-between",
+        children: [/* @__PURE__ */ jsxs("div", {
+          children: [/* @__PURE__ */ jsx("h1", {
+            className: "mb-2 font-['Clash_Display'] text-4xl font-bold text-neutral-900",
+            children: "Internships"
+          }), /* @__PURE__ */ jsx("p", {
+            className: "font-['Satoshi'] text-gray-600",
+            children: "Manage internship listings"
+          })]
+        }), /* @__PURE__ */ jsx(Link, {
+          to: "/internships/new",
+          className: "rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-2 font-['Satoshi'] font-medium text-white transition-colors hover:bg-violet-700",
+          children: "Create New"
+        })]
+      }), /* @__PURE__ */ jsxs("div", {
+        className: "mb-6 flex gap-4",
+        children: [/* @__PURE__ */ jsxs("select", {
+          value: statusFilter,
+          onChange: (e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          },
+          className: "rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+          children: [/* @__PURE__ */ jsx("option", {
+            value: "all",
+            children: "All Status"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "draft",
+            children: "Draft"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "published",
+            children: "Published"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "closed",
+            children: "Closed"
+          })]
+        }), /* @__PURE__ */ jsx("input", {
+          type: "text",
+          value: search,
+          onChange: (e) => setSearch(e.target.value),
+          placeholder: "Search internships...",
+          className: "flex-1 rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+          onKeyDown: (e) => {
+            if (e.key === "Enter") {
+              setPage(1);
+              loadInternships();
+            }
+          }
+        })]
+      }), loading ? /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "Loading internships..."
+      }) : internships.length === 0 ? /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "No internships found."
+      }) : /* @__PURE__ */ jsxs(Fragment, {
+        children: [/* @__PURE__ */ jsx("div", {
+          className: "overflow-x-auto",
+          children: /* @__PURE__ */ jsxs("table", {
+            className: "w-full border-2 border-neutral-900",
+            children: [/* @__PURE__ */ jsx("thead", {
+              children: /* @__PURE__ */ jsxs("tr", {
+                className: "bg-neutral-100",
+                children: [/* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Title"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Company"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Status"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Views"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Clicks"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Applications"
+                }), /* @__PURE__ */ jsx("th", {
+                  className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                  children: "Actions"
+                })]
+              })
+            }), /* @__PURE__ */ jsx("tbody", {
+              children: internships.map((internship) => /* @__PURE__ */ jsxs("tr", {
+                children: [/* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: /* @__PURE__ */ jsx(Link, {
+                    to: `/internships/${internship.id}`,
+                    className: "text-violet-600 hover:underline",
+                    children: internship.title
+                  })
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: internship.company_name
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: /* @__PURE__ */ jsx("span", {
+                    className: `inline-block rounded-full px-3 py-1 text-xs font-medium ${internship.status === "published" ? "bg-green-100 text-green-700" : internship.status === "draft" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`,
+                    children: internship.status
+                  })
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: internship.view_count
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: internship.click_count
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: /* @__PURE__ */ jsx(Link, {
+                    to: `/internships/${internship.id}/applications`,
+                    className: "text-violet-600 hover:underline",
+                    children: internship.application_count
+                  })
+                }), /* @__PURE__ */ jsx("td", {
+                  className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                  children: /* @__PURE__ */ jsxs("div", {
+                    className: "flex gap-2",
+                    children: [/* @__PURE__ */ jsx(Link, {
+                      to: `/internships/${internship.id}`,
+                      className: "text-violet-600 hover:underline",
+                      children: "Edit"
+                    }), /* @__PURE__ */ jsx("button", {
+                      onClick: () => handleDelete(internship.id),
+                      className: "text-red-600 hover:underline",
+                      children: "Delete"
+                    })]
+                  })
+                })]
+              }, internship.id))
+            })]
+          })
+        }), totalPages > 1 && /* @__PURE__ */ jsxs("div", {
+          className: "mt-6 flex justify-center gap-2",
+          children: [/* @__PURE__ */ jsx("button", {
+            onClick: () => setPage(Math.max(1, page - 1)),
+            disabled: page === 1,
+            className: "rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] font-medium disabled:opacity-50",
+            children: "Previous"
+          }), /* @__PURE__ */ jsxs("span", {
+            className: "flex items-center px-4 font-['Satoshi']",
+            children: ["Page ", page, " of ", totalPages]
+          }), /* @__PURE__ */ jsx("button", {
+            onClick: () => setPage(Math.min(totalPages, page + 1)),
+            disabled: page === totalPages,
+            className: "rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] font-medium disabled:opacity-50",
+            children: "Next"
+          })]
+        })]
+      })]
+    })
+  });
+});
+const route10 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: index,
+  meta: meta$3
+}, Symbol.toStringTag, { value: "Module" }));
+function InternshipForm({ initialData, onSubmit, onCancel }) {
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [companyName, setCompanyName] = useState(initialData?.company_name || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [requirements, setRequirements] = useState(initialData?.requirements || "");
+  const [location, setLocation] = useState(initialData?.location || "");
+  const [duration, setDuration] = useState(initialData?.duration || "");
+  const [stipend, setStipend] = useState(initialData?.stipend || "");
+  const [applicationDeadline, setApplicationDeadline] = useState(
+    initialData?.application_deadline ? new Date(initialData.application_deadline).toISOString().split("T")[0] : ""
+  );
+  const [status, setStatus] = useState(
+    initialData?.status || "draft"
+  );
+  const [loading, setLoading] = useState(false);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !companyName.trim() || !description.trim() || !requirements.trim()) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSubmit({
+        title: title.trim(),
+        company_name: companyName.trim(),
+        description,
+        requirements,
+        location: location.trim() || void 0,
+        duration: duration.trim() || void 0,
+        stipend: stipend.trim() || void 0,
+        application_deadline: applicationDeadline || void 0,
+        status
+      });
+    } catch (error) {
+      console.error("Error submitting form:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, className: "space-y-6", children: [
+    /* @__PURE__ */ jsxs("div", { children: [
+      /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Role Title *" }),
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "text",
+          value: title,
+          onChange: (e) => setTitle(e.target.value),
+          required: true,
+          className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+          placeholder: "e.g., Software Engineering Intern"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { children: [
+      /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Company Name *" }),
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "text",
+          value: companyName,
+          onChange: (e) => setCompanyName(e.target.value),
+          required: true,
+          className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+          placeholder: "e.g., Tech Corp"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { children: [
+      /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Description *" }),
+      /* @__PURE__ */ jsx(
+        TipTapEditor,
+        {
+          content: description,
+          onChange: setDescription,
+          placeholder: "Describe the internship role, responsibilities, and what the intern will learn..."
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { children: [
+      /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Requirements *" }),
+      /* @__PURE__ */ jsx(
+        TipTapEditor,
+        {
+          content: requirements,
+          onChange: setRequirements,
+          placeholder: "List the skills, qualifications, and requirements for this internship..."
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: [
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Location" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "text",
+            value: location,
+            onChange: (e) => setLocation(e.target.value),
+            className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+            placeholder: "e.g., Remote, Mumbai, India"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Duration" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "text",
+            value: duration,
+            onChange: (e) => setDuration(e.target.value),
+            className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+            placeholder: "e.g., 3 months, 6 months"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-1 gap-4 md:grid-cols-2", children: [
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Stipend" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "text",
+            value: stipend,
+            onChange: (e) => setStipend(e.target.value),
+            className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+            placeholder: "e.g., ₹20,000/month, Unpaid"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Application Deadline" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "date",
+            value: applicationDeadline,
+            onChange: (e) => setApplicationDeadline(e.target.value),
+            className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { children: [
+      /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Status *" }),
+      /* @__PURE__ */ jsxs(
+        "select",
+        {
+          value: status,
+          onChange: (e) => setStatus(e.target.value),
+          required: true,
+          className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500",
+          children: [
+            /* @__PURE__ */ jsx("option", { value: "draft", children: "Draft" }),
+            /* @__PURE__ */ jsx("option", { value: "published", children: "Published" }),
+            /* @__PURE__ */ jsx("option", { value: "closed", children: "Closed" })
+          ]
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "flex gap-4", children: [
+      onCancel && /* @__PURE__ */ jsx(
+        "button",
+        {
+          type: "button",
+          onClick: onCancel,
+          className: "flex-1 rounded-lg border-2 border-neutral-900 px-6 py-3 font-['Satoshi'] font-medium text-neutral-900 transition-colors hover:bg-neutral-100",
+          children: "Cancel"
+        }
+      ),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          type: "submit",
+          disabled: loading,
+          className: "flex-1 rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-3 font-['Satoshi'] font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed",
+          children: loading ? "Saving..." : initialData ? "Update Internship" : "Create Internship"
+        }
+      )
+    ] })
+  ] });
+}
+function meta$2({}) {
+  return [{
+    title: "New Internship – Maverick"
+  }, {
+    name: "description",
+    content: "Create a new internship listing"
+  }];
+}
+const _new = UNSAFE_withComponentProps(function NewInternship() {
+  const navigate = useNavigate();
+  const {
+    isAuthorized,
+    isPending
+  } = useOpsGuard();
+  const handleSubmit = async (data) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch("/api/internships", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create internship");
+      }
+      const result = await response.json();
+      toast.success("Internship created successfully");
+      navigate(`/internships/${result.internship.id}`);
+    } catch (error) {
+      console.error("Error creating internship:", error);
+      toast.error(error.message || "Failed to create internship");
+    }
+  };
+  if (isPending) {
+    return /* @__PURE__ */ jsx("div", {
+      className: "flex min-h-screen items-center justify-center",
+      children: /* @__PURE__ */ jsxs("div", {
+        className: "text-center",
+        children: [/* @__PURE__ */ jsx("div", {
+          className: "mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-violet-500 border-r-transparent"
+        }), /* @__PURE__ */ jsx("p", {
+          className: "font-['Satoshi'] text-sm text-gray-600",
+          children: "Loading..."
+        })]
+      })
+    });
+  }
+  if (!isAuthorized) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen bg-gray-50 p-8",
+    children: /* @__PURE__ */ jsxs("div", {
+      className: "mx-auto max-w-4xl",
+      children: [/* @__PURE__ */ jsxs("div", {
+        className: "mb-8",
+        children: [/* @__PURE__ */ jsx("h1", {
+          className: "font-['Clash_Display'] text-4xl font-bold text-neutral-900",
+          children: "New Internship"
+        }), /* @__PURE__ */ jsx("p", {
+          className: "mt-2 font-['Satoshi'] text-sm text-gray-600",
+          children: "Create a new internship listing"
+        })]
+      }), /* @__PURE__ */ jsx("div", {
+        className: "rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden",
+        children: /* @__PURE__ */ jsx(InternshipForm, {
+          onSubmit: handleSubmit,
+          onCancel: () => navigate("/internships")
+        })
+      })]
+    })
+  });
+});
+const route11 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: _new,
+  meta: meta$2
+}, Symbol.toStringTag, { value: "Module" }));
+function meta$1({}) {
+  return [{
+    title: "Edit Internship – Maverick"
+  }, {
+    name: "description",
+    content: "Edit internship listing"
+  }];
+}
+async function loader$4({
+  params,
+  request
+}) {
+  const {
+    id
+  } = params;
+  const token = await getToken();
+  if (!token) {
+    throw new Response("Unauthorized", {
+      status: 401
+    });
+  }
+  const response = await fetch(`${new URL(request.url).origin}/api/internships/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Response("Internship not found", {
+        status: 404
+      });
+    }
+    throw new Response("Failed to load internship", {
+      status: 500
+    });
+  }
+  const data = await response.json();
+  return {
+    internship: data.internship
+  };
+}
+const $id = UNSAFE_withComponentProps(function EditInternship({
+  data
+}) {
+  const loaderData = useLoaderData();
+  const internship = loaderData?.internship || data?.internship;
+  const navigate = useNavigate();
+  const {
+    isAuthorized,
+    isPending
+  } = useOpsGuard();
+  const handleSubmit = async (formData) => {
+    if (!internship) return;
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch(`/api/internships/${internship.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update internship");
+      }
+      toast.success("Internship updated successfully");
+      navigate(`/internships/${internship.id}`);
+    } catch (error) {
+      console.error("Error updating internship:", error);
+      toast.error(error.message || "Failed to update internship");
+    }
+  };
+  if (isPending) {
+    return /* @__PURE__ */ jsx("div", {
+      className: "flex min-h-screen items-center justify-center",
+      children: /* @__PURE__ */ jsxs("div", {
+        className: "text-center",
+        children: [/* @__PURE__ */ jsx("div", {
+          className: "mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-violet-500 border-r-transparent"
+        }), /* @__PURE__ */ jsx("p", {
+          className: "font-['Satoshi'] text-sm text-gray-600",
+          children: "Loading..."
+        })]
+      })
+    });
+  }
+  if (!isAuthorized || !internship) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen bg-gray-50 p-8",
+    children: /* @__PURE__ */ jsxs("div", {
+      className: "mx-auto max-w-4xl",
+      children: [/* @__PURE__ */ jsxs("div", {
+        className: "mb-8",
+        children: [/* @__PURE__ */ jsx("h1", {
+          className: "font-['Clash_Display'] text-4xl font-bold text-neutral-900",
+          children: "Edit Internship"
+        }), /* @__PURE__ */ jsxs("p", {
+          className: "mt-2 font-['Satoshi'] text-sm text-gray-600",
+          children: [internship.title, " at ", internship.company_name]
+        })]
+      }), /* @__PURE__ */ jsx("div", {
+        className: "rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden",
+        children: /* @__PURE__ */ jsx(InternshipForm, {
+          initialData: internship,
+          onSubmit: handleSubmit,
+          onCancel: () => navigate("/internships")
+        })
+      }), internship.status === "published" && /* @__PURE__ */ jsxs("div", {
+        className: "mt-6 rounded-lg border-2 border-neutral-900 bg-violet-50 p-4",
+        children: [/* @__PURE__ */ jsx("p", {
+          className: "mb-2 font-['Satoshi'] font-medium text-neutral-900",
+          children: "Public URL:"
+        }), /* @__PURE__ */ jsxs("a", {
+          href: `${typeof window !== "undefined" ? window.location.origin.replace(":3002", ":3000") : ""}/internships/${internship.slug}`,
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "font-['Satoshi'] text-violet-600 hover:underline break-all",
+          children: [typeof window !== "undefined" ? window.location.origin.replace(":3002", ":3000") : "", "/internships/", internship.slug]
+        })]
+      })]
+    })
+  });
+});
+const route12 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: $id,
+  loader: loader$4,
+  meta: meta$1
+}, Symbol.toStringTag, { value: "Module" }));
+function ForwardModal({
+  internshipId,
+  applicationIds,
+  onClose,
+  onSuccess
+}) {
+  const [expiresAt, setExpiresAt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [forwardedUrl, setForwardedUrl] = useState(null);
+  const [forwardedToken, setForwardedToken] = useState(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch("/api/internships/applications/forward", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          application_ids: applicationIds,
+          internship_id: internshipId,
+          expires_at: expiresAt || void 0
+        })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to forward applications");
+      }
+      const data = await response.json();
+      setForwardedUrl(data.url);
+      setForwardedToken(data.token);
+      toast.success("Applications forwarded successfully");
+    } catch (error) {
+      console.error("Error forwarding applications:", error);
+      toast.error(error.message || "Failed to forward applications");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
+  };
+  if (forwardedUrl) {
+    return /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4", children: /* @__PURE__ */ jsxs("div", { className: "relative w-full max-w-2xl rounded-lg border-2 border-neutral-900 bg-white p-6 shadow-lg", children: [
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: onClose,
+          className: "absolute right-4 top-4 rounded p-2 text-gray-500 hover:bg-gray-100",
+          children: /* @__PURE__ */ jsx(FiX, { className: "w-5 h-5" })
+        }
+      ),
+      /* @__PURE__ */ jsx("h2", { className: "mb-4 font-['Clash_Display'] text-2xl font-bold text-neutral-900", children: "Applications Forwarded" }),
+      /* @__PURE__ */ jsxs("div", { className: "mb-4 space-y-4", children: [
+        /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Shareable URL" }),
+          /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                type: "text",
+                value: forwardedUrl,
+                readOnly: true,
+                className: "flex-1 rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi']"
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: () => copyToClipboard(forwardedUrl),
+                className: "rounded-lg border-2 border-neutral-900 bg-violet-600 px-4 py-2 text-white hover:bg-violet-700",
+                children: /* @__PURE__ */ jsx(FiCopy, { className: "w-5 h-5" })
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Token (for reference)" }),
+          /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                type: "text",
+                value: forwardedToken || "",
+                readOnly: true,
+                className: "flex-1 rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] font-mono text-sm"
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: () => copyToClipboard(forwardedToken || ""),
+                className: "rounded-lg border-2 border-neutral-900 bg-violet-600 px-4 py-2 text-white hover:bg-violet-700",
+                children: /* @__PURE__ */ jsx(FiCopy, { className: "w-5 h-5" })
+              }
+            )
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "flex gap-4", children: /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: onSuccess,
+          className: "flex-1 rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-3 font-['Satoshi'] font-bold text-white transition-colors hover:bg-violet-700",
+          children: "Done"
+        }
+      ) })
+    ] }) });
+  }
+  return /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4", children: /* @__PURE__ */ jsxs("div", { className: "relative w-full max-w-2xl rounded-lg border-2 border-neutral-900 bg-white p-6 shadow-lg", children: [
+    /* @__PURE__ */ jsx(
+      "button",
+      {
+        onClick: onClose,
+        className: "absolute right-4 top-4 rounded p-2 text-gray-500 hover:bg-gray-100",
+        children: /* @__PURE__ */ jsx(FiX, { className: "w-5 h-5" })
+      }
+    ),
+    /* @__PURE__ */ jsx("h2", { className: "mb-6 font-['Clash_Display'] text-2xl font-bold text-neutral-900", children: "Forward to Company" }),
+    /* @__PURE__ */ jsxs("p", { className: "mb-4 font-['Satoshi'] text-gray-600", children: [
+      "Forwarding ",
+      applicationIds.length,
+      " application",
+      applicationIds.length !== 1 ? "s" : "",
+      " to company."
+    ] }),
+    /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmit, className: "space-y-4", children: [
+      /* @__PURE__ */ jsxs("div", { children: [
+        /* @__PURE__ */ jsx("label", { className: "mb-2 block font-['Satoshi'] font-medium text-neutral-900", children: "Expiration Date (optional)" }),
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "datetime-local",
+            value: expiresAt,
+            onChange: (e) => setExpiresAt(e.target.value),
+            className: "w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500"
+          }
+        ),
+        /* @__PURE__ */ jsx("p", { className: "mt-1 text-sm font-['Satoshi'] text-gray-500", children: "Leave empty for no expiration" })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "flex gap-4", children: [
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "button",
+            onClick: onClose,
+            className: "flex-1 rounded-lg border-2 border-neutral-900 px-6 py-3 font-['Satoshi'] font-medium text-neutral-900 transition-colors hover:bg-neutral-100",
+            children: "Cancel"
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            type: "submit",
+            disabled: loading,
+            className: "flex-1 rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-3 font-['Satoshi'] font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed",
+            children: loading ? "Forwarding..." : "Forward Applications"
+          }
+        )
+      ] })
+    ] })
+  ] }) });
+}
+function meta({}) {
+  return [{
+    title: "Applications – Maverick"
+  }, {
+    name: "description",
+    content: "Review internship applications"
+  }];
+}
+async function loader$3({
+  params,
+  request
+}) {
+  const {
+    id
+  } = params;
+  const token = await getToken();
+  if (!token) {
+    throw new Response("Unauthorized", {
+      status: 401
+    });
+  }
+  const response = await fetch(`${new URL(request.url).origin}/api/internships/${id}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    throw new Response("Failed to load internship", {
+      status: 500
+    });
+  }
+  const data = await response.json();
+  return {
+    internship: data.internship
+  };
+}
+const applications = UNSAFE_withComponentProps(function ApplicationsList({
+  data
+}) {
+  const loaderData = useLoaderData();
+  const internship = loaderData?.internship || data?.internship;
+  const navigate = useNavigate();
+  const {
+    isAuthorized,
+    isPending
+  } = useOpsGuard();
+  const [applications2, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedApplications, setSelectedApplications] = useState([]);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  useEffect(() => {
+    if (isAuthorized && internship) {
+      loadApplications();
+    }
+  }, [isAuthorized, internship, statusFilter]);
+  const loadApplications = async () => {
+    if (!internship) return;
+    try {
+      setLoading(true);
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      const response = await fetch(`/api/internships/${internship.id}/applications?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load applications");
+      }
+      const data2 = await response.json();
+      setApplications(data2.applications || []);
+    } catch (error) {
+      console.error("Error loading applications:", error);
+      toast.error("Failed to load applications");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleStatusUpdate = async (applicationId, newStatus) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch(`/api/internships/applications/${applicationId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: newStatus
+        })
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update application status");
+      }
+      toast.success("Application status updated");
+      loadApplications();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update application status");
+    }
+  };
+  const handleForward = () => {
+    if (selectedApplications.length === 0) {
+      toast.error("Please select at least one application to forward");
+      return;
+    }
+    setShowForwardModal(true);
+  };
+  if (isPending) {
+    return /* @__PURE__ */ jsx("div", {
+      className: "flex min-h-screen items-center justify-center",
+      children: /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "Loading..."
+      })
+    });
+  }
+  if (!isAuthorized || !internship) {
+    return null;
+  }
+  return /* @__PURE__ */ jsx("div", {
+    className: "min-h-screen bg-white p-8",
+    children: /* @__PURE__ */ jsxs("div", {
+      className: "mx-auto max-w-7xl",
+      children: [/* @__PURE__ */ jsxs("div", {
+        className: "mb-8",
+        children: [/* @__PURE__ */ jsx("button", {
+          onClick: () => navigate(`/internships/${internship.id}`),
+          className: "mb-4 text-violet-600 hover:underline font-['Satoshi']",
+          children: "← Back to Internship"
+        }), /* @__PURE__ */ jsxs("h1", {
+          className: "mb-2 font-['Clash_Display'] text-4xl font-bold text-neutral-900",
+          children: ["Applications: ", internship.title]
+        }), /* @__PURE__ */ jsx("p", {
+          className: "font-['Satoshi'] text-gray-600",
+          children: internship.company_name
+        })]
+      }), /* @__PURE__ */ jsxs("div", {
+        className: "mb-6 flex items-center justify-between",
+        children: [/* @__PURE__ */ jsxs("select", {
+          value: statusFilter,
+          onChange: (e) => setStatusFilter(e.target.value),
+          className: "rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+          children: [/* @__PURE__ */ jsx("option", {
+            value: "all",
+            children: "All Status"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "pending",
+            children: "Pending"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "shortlisted",
+            children: "Shortlisted"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "rejected",
+            children: "Rejected"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "forwarded",
+            children: "Forwarded"
+          }), /* @__PURE__ */ jsx("option", {
+            value: "accepted",
+            children: "Accepted"
+          })]
+        }), selectedApplications.length > 0 && /* @__PURE__ */ jsxs("button", {
+          onClick: handleForward,
+          className: "rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-2 font-['Satoshi'] font-medium text-white transition-colors hover:bg-violet-700",
+          children: ["Forward Selected (", selectedApplications.length, ")"]
+        })]
+      }), loading ? /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "Loading applications..."
+      }) : applications2.length === 0 ? /* @__PURE__ */ jsx("p", {
+        className: "font-['Satoshi'] text-gray-600",
+        children: "No applications found."
+      }) : /* @__PURE__ */ jsx("div", {
+        className: "overflow-x-auto",
+        children: /* @__PURE__ */ jsxs("table", {
+          className: "w-full border-2 border-neutral-900",
+          children: [/* @__PURE__ */ jsx("thead", {
+            children: /* @__PURE__ */ jsxs("tr", {
+              className: "bg-neutral-100",
+              children: [/* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: /* @__PURE__ */ jsx("input", {
+                  type: "checkbox",
+                  checked: selectedApplications.length === applications2.length && applications2.length > 0,
+                  onChange: (e) => {
+                    if (e.target.checked) {
+                      setSelectedApplications(applications2.map((app) => app.id));
+                    } else {
+                      setSelectedApplications([]);
+                    }
+                  }
+                })
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Student"
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Email"
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Resume"
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Applied"
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Status"
+              }), /* @__PURE__ */ jsx("th", {
+                className: "border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold",
+                children: "Actions"
+              })]
+            })
+          }), /* @__PURE__ */ jsx("tbody", {
+            children: applications2.map((app) => /* @__PURE__ */ jsxs("tr", {
+              children: [/* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2",
+                children: /* @__PURE__ */ jsx("input", {
+                  type: "checkbox",
+                  checked: selectedApplications.includes(app.id),
+                  onChange: (e) => {
+                    if (e.target.checked) {
+                      setSelectedApplications([...selectedApplications, app.id]);
+                    } else {
+                      setSelectedApplications(selectedApplications.filter((id) => id !== app.id));
+                    }
+                  }
+                })
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: app.user_name || "N/A"
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: app.user_email || "N/A"
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: app.resume_name || "N/A"
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: new Date(app.created_at).toLocaleDateString()
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: /* @__PURE__ */ jsx("span", {
+                  className: `inline-block rounded-full px-3 py-1 text-xs font-medium ${app.status === "accepted" ? "bg-green-100 text-green-700" : app.status === "shortlisted" ? "bg-blue-100 text-blue-700" : app.status === "rejected" ? "bg-red-100 text-red-700" : app.status === "forwarded" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"}`,
+                  children: app.status
+                })
+              }), /* @__PURE__ */ jsx("td", {
+                className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
+                children: /* @__PURE__ */ jsxs("select", {
+                  value: app.status,
+                  onChange: (e) => handleStatusUpdate(app.id, e.target.value),
+                  className: "rounded border border-neutral-900 px-2 py-1 text-sm font-['Satoshi']",
+                  children: [/* @__PURE__ */ jsx("option", {
+                    value: "pending",
+                    children: "Pending"
+                  }), /* @__PURE__ */ jsx("option", {
+                    value: "shortlisted",
+                    children: "Shortlist"
+                  }), /* @__PURE__ */ jsx("option", {
+                    value: "rejected",
+                    children: "Reject"
+                  }), /* @__PURE__ */ jsx("option", {
+                    value: "forwarded",
+                    children: "Forward"
+                  }), /* @__PURE__ */ jsx("option", {
+                    value: "accepted",
+                    children: "Accept"
+                  })]
+                })
+              })]
+            }, app.id))
+          })]
+        })
+      }), showForwardModal && /* @__PURE__ */ jsx(ForwardModal, {
+        internshipId: internship.id,
+        applicationIds: selectedApplications,
+        onClose: () => {
+          setShowForwardModal(false);
+          setSelectedApplications([]);
+        },
+        onSuccess: () => {
+          setShowForwardModal(false);
+          setSelectedApplications([]);
+          loadApplications();
+        }
+      })]
+    })
+  });
+});
+const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: applications,
+  loader: loader$3,
+  meta
+}, Symbol.toStringTag, { value: "Module" }));
+async function loader$2({
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const result = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (result.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = result.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get("page") || "1", 10);
+  const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+  const status = url.searchParams.get("status");
+  const search = url.searchParams.get("search");
+  const offset = (page - 1) * limit;
+  let query = sql`SELECT * FROM internships WHERE 1=1`;
+  if (status && status !== "all") {
+    query = sql`${query} AND status = ${status}`;
+  }
+  if (search) {
+    query = sql`${query} AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})`;
+  }
+  query = sql`${query} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+  const internships = await db.execute(query);
+  const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM internships WHERE 1=1 ${status && status !== "all" ? sql`AND status = ${status}` : sql``} ${search ? sql`AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})` : sql``}`);
+  const total = parseInt(countResult.rows[0].total, 10);
+  return Response.json({
+    internships: internships.rows,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  });
+}
+async function action$3({
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const roleResult = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (roleResult.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = roleResult.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const body = await request.json();
+  const {
+    title,
+    company_name,
+    description,
+    requirements,
+    location,
+    duration,
+    stipend,
+    application_deadline,
+    status
+  } = body;
+  if (!title || !company_name || !description || !requirements) {
+    return Response.json({
+      error: "Title, company name, description, and requirements are required"
+    }, {
+      status: 400
+    });
+  }
+  let slug = slugify(title, {
+    lower: true,
+    strict: true
+  });
+  let counter = 1;
+  let originalSlug = slug;
+  while (true) {
+    const existing = await db.execute(sql`SELECT id FROM internships WHERE slug = ${slug} LIMIT 1`);
+    if (existing.rows.length === 0) {
+      break;
+    }
+    slug = `${originalSlug}-${counter}`;
+    counter++;
+  }
+  const result = await db.execute(sql`
+      INSERT INTO internships (
+        title, company_name, description, requirements, location, duration, stipend,
+        application_deadline, status, slug, created_by
+      ) VALUES (
+        ${title}, ${company_name}, ${description}, ${requirements},
+        ${location || null}, ${duration || null}, ${stipend || null},
+        ${application_deadline ? new Date(application_deadline) : null},
+        ${status || "draft"}, ${slug}, ${user.id}
+      ) RETURNING *
+    `);
+  const internship = result.rows[0];
+  return Response.json({
+    success: true,
+    internship
+  });
+}
+const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  action: action$3,
+  loader: loader$2
+}, Symbol.toStringTag, { value: "Module" }));
+async function loader$1({
+  params,
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const result = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (result.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = result.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const {
+    id
+  } = params;
+  const internshipResult = await db.execute(sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`);
+  if (internshipResult.rows.length === 0) {
+    return Response.json({
+      error: "Internship not found"
+    }, {
+      status: 404
+    });
+  }
+  return Response.json({
+    internship: internshipResult.rows[0]
+  });
+}
+async function action$2({
+  params,
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const roleResult = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (roleResult.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = roleResult.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const {
+    id
+  } = params;
+  if (request.method === "DELETE") {
+    await db.execute(sql`DELETE FROM internships WHERE id = ${id}`);
+    return Response.json({
+      success: true
+    });
+  }
+  const body = await request.json();
+  const {
+    title,
+    company_name,
+    description,
+    requirements,
+    location,
+    duration,
+    stipend,
+    application_deadline,
+    status
+  } = body;
+  const existingResult = await db.execute(sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`);
+  if (existingResult.rows.length === 0) {
+    return Response.json({
+      error: "Internship not found"
+    }, {
+      status: 404
+    });
+  }
+  const existing = existingResult.rows[0];
+  let slug = existing.slug;
+  if (title && title !== existing.title) {
+    slug = slugify(title, {
+      lower: true,
+      strict: true
+    });
+    let counter = 1;
+    let originalSlug = slug;
+    while (true) {
+      const slugCheck = await db.execute(sql`SELECT id FROM internships WHERE slug = ${slug} AND id != ${id} LIMIT 1`);
+      if (slugCheck.rows.length === 0) {
+        break;
+      }
+      slug = `${originalSlug}-${counter}`;
+      counter++;
+    }
+  }
+  const updateResult = await db.execute(sql`
+      UPDATE internships SET
+        title = COALESCE(${title || null}, title),
+        company_name = COALESCE(${company_name || null}, company_name),
+        description = COALESCE(${description || null}, description),
+        requirements = COALESCE(${requirements || null}, requirements),
+        location = COALESCE(${location || null}, location),
+        duration = COALESCE(${duration || null}, duration),
+        stipend = COALESCE(${stipend || null}, stipend),
+        application_deadline = COALESCE(${application_deadline ? new Date(application_deadline) : null}, application_deadline),
+        status = COALESCE(${status || null}, status),
+        slug = ${slug},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+  return Response.json({
+    success: true,
+    internship: updateResult.rows[0]
+  });
+}
+const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  action: action$2,
+  loader: loader$1
+}, Symbol.toStringTag, { value: "Module" }));
+async function loader({
+  params,
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const result = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (result.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = result.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const {
+    id: internshipId
+  } = params;
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status");
+  let query = sql`
+    SELECT 
+      ia.*,
+      u.name as user_name,
+      u.email as user_email,
+      r.name as resume_name
+    FROM internship_applications ia
+    JOIN "user" u ON ia.user_id = u.id
+    JOIN resumes r ON ia.resume_id = r.id
+    WHERE ia.internship_id = ${internshipId}
+  `;
+  if (status && status !== "all") {
+    query = sql`${query} AND ia.status = ${status}`;
+  }
+  query = sql`${query} ORDER BY ia.created_at DESC`;
+  const applications2 = await db.execute(query);
+  return Response.json({
+    applications: applications2.rows.map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      resume_id: row.resume_id,
+      status: row.status,
+      created_at: row.created_at,
+      user_name: row.user_name,
+      user_email: row.user_email,
+      resume_name: row.resume_name
+    }))
+  });
+}
+const route16 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
   loader
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-D4Wp8Cwj.js", "imports": ["/assets/index-BazM2RsE.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-D03cOgC0.js", "imports": ["/assets/index-BazM2RsE.js", "/assets/index-Bc1pEpVR.js"], "css": ["/assets/root-CsZlXKUM.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/index": { "id": "routes/index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-D8e8A8jD.js", "imports": ["/assets/index-BazM2RsE.js", "/assets/ops-guard-CZXP5ncn.js", "/assets/api-n_XQ3tqp.js", "/assets/index-Bc1pEpVR.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "login", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-D7mA3ebG.js", "imports": ["/assets/index-BazM2RsE.js", "/assets/api-n_XQ3tqp.js", "/assets/index-Bc1pEpVR.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/new": { "id": "routes/blog/new", "parentId": "root", "path": "blog/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-DFxIzz41.js", "imports": ["/assets/index-BazM2RsE.js", "/assets/ops-guard-CZXP5ncn.js", "/assets/api-n_XQ3tqp.js", "/assets/index-Bc1pEpVR.js", "/assets/blog-form-B2yZTiZK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/$id": { "id": "routes/blog/$id", "parentId": "root", "path": "blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-BkqipRGc.js", "imports": ["/assets/index-BazM2RsE.js", "/assets/ops-guard-CZXP5ncn.js", "/assets/api-n_XQ3tqp.js", "/assets/index-Bc1pEpVR.js", "/assets/blog-form-B2yZTiZK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.check-role": { "id": "routes/api.auth.check-role", "parentId": "root", "path": "api/auth/check-role", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.check-role-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/upload-image": { "id": "routes/api/blog/upload-image", "parentId": "root", "path": "api/blog/upload-image", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/upload-image-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/$id": { "id": "routes/api/blog/$id", "parentId": "root", "path": "api/blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/route": { "id": "routes/api/blog/route", "parentId": "root", "path": "api/blog", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/images/$": { "id": "routes/api/images/$", "parentId": "root", "path": "api/images/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-ef4427f1.js", "version": "ef4427f1", "sri": void 0 };
+async function action$1({
+  params,
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const roleResult = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (roleResult.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = roleResult.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const {
+    id
+  } = params;
+  const body = await request.json();
+  const {
+    status,
+    admin_notes
+  } = body;
+  if (!status) {
+    return Response.json({
+      error: "Status is required"
+    }, {
+      status: 400
+    });
+  }
+  const validStatuses = ["pending", "shortlisted", "rejected", "forwarded", "accepted", "interview_scheduled", "more_info_requested"];
+  if (!validStatuses.includes(status)) {
+    return Response.json({
+      error: "Invalid status"
+    }, {
+      status: 400
+    });
+  }
+  const updateResult = await db.execute(sql`
+      UPDATE internship_applications SET
+        status = ${status},
+        admin_notes = COALESCE(${admin_notes || null}, admin_notes),
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `);
+  if (updateResult.rows.length === 0) {
+    return Response.json({
+      error: "Application not found"
+    }, {
+      status: 404
+    });
+  }
+  return Response.json({
+    success: true,
+    application: updateResult.rows[0]
+  });
+}
+const route17 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  action: action$1
+}, Symbol.toStringTag, { value: "Module" }));
+async function action({
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const roleResult = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (roleResult.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = roleResult.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const body = await request.json();
+  const {
+    application_ids,
+    internship_id,
+    expires_at
+  } = body;
+  if (!application_ids || !Array.isArray(application_ids) || application_ids.length === 0) {
+    return Response.json({
+      error: "application_ids array is required"
+    }, {
+      status: 400
+    });
+  }
+  if (!internship_id) {
+    return Response.json({
+      error: "internship_id is required"
+    }, {
+      status: 400
+    });
+  }
+  const applicationsCheck = await db.execute(sql`SELECT internship_id FROM internship_applications WHERE id = ANY(${application_ids})`);
+  const uniqueInternshipIds = [...new Set(applicationsCheck.rows.map((r) => r.internship_id))];
+  if (uniqueInternshipIds.length !== 1 || uniqueInternshipIds[0] !== internship_id) {
+    return Response.json({
+      error: "All applications must belong to the same internship"
+    }, {
+      status: 400
+    });
+  }
+  const token = randomBytes(32).toString("hex");
+  const tokenResult = await db.execute(sql`
+      INSERT INTO company_tokens (
+        token, internship_id, application_ids, created_by, expires_at
+      ) VALUES (
+        ${token}, ${internship_id}, ${JSON.stringify(application_ids)}::jsonb, ${user.id},
+        ${expires_at ? new Date(expires_at) : null}
+      ) RETURNING *
+    `);
+  await db.execute(sql`
+      UPDATE internship_applications SET
+        status = 'forwarded',
+        company_token = ${token},
+        forwarded_at = NOW(),
+        updated_at = NOW()
+      WHERE id = ANY(${application_ids})
+    `);
+  const baseUrl = typeof process !== "undefined" && process.env.VITE_FRONTEND_URL ? process.env.VITE_FRONTEND_URL : "http://localhost:3000";
+  const url = `${baseUrl}/company/internships/${internship_id}?token=${token}`;
+  return Response.json({
+    success: true,
+    token,
+    url,
+    company_token: tokenResult.rows[0]
+  });
+}
+const route18 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  action
+}, Symbol.toStringTag, { value: "Module" }));
+const serverManifest = { "entry": { "module": "/assets/entry.client-DeUk2TeK.js", "imports": ["/assets/index-CzXbQU2w.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-CbrLjEoF.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/index-BeVtLth0.js"], "css": ["/assets/root-ClI7gOhI.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/index": { "id": "routes/index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-MIJGsi2N.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "login", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-DXpNuf0R.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/new": { "id": "routes/blog/new", "parentId": "root", "path": "blog/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-kyP-2Fch.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/blog-form-BoEfK4dh.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/$id": { "id": "routes/blog/$id", "parentId": "root", "path": "blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-pqfnNvyD.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/blog-form-BoEfK4dh.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.check-role": { "id": "routes/api.auth.check-role", "parentId": "root", "path": "api/auth/check-role", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.check-role-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/upload-image": { "id": "routes/api/blog/upload-image", "parentId": "root", "path": "api/blog/upload-image", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/upload-image-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/$id": { "id": "routes/api/blog/$id", "parentId": "root", "path": "api/blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/route": { "id": "routes/api/blog/route", "parentId": "root", "path": "api/blog", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/images/$": { "id": "routes/api/images/$", "parentId": "root", "path": "api/images/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/index": { "id": "routes/internships/index", "parentId": "root", "path": "internships", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-DGtI7hZ_.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/new": { "id": "routes/internships/new", "parentId": "root", "path": "internships/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-f2xa0FJf.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/internship-form-BJrV4QNS.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id": { "id": "routes/internships/$id", "parentId": "root", "path": "internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-7VU9AQ4J.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/internship-form-BJrV4QNS.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id/applications": { "id": "routes/internships/$id/applications", "parentId": "root", "path": "internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-C6C0hgi_.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/route": { "id": "routes/api/internships/route", "parentId": "root", "path": "api/internships", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id": { "id": "routes/api/internships/$id", "parentId": "root", "path": "api/internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id/applications": { "id": "routes/api/internships/$id/applications", "parentId": "root", "path": "api/internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/$id": { "id": "routes/api/internships/applications/$id", "parentId": "root", "path": "api/internships/applications/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-K6Dvbx-E.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/forward": { "id": "routes/api/internships/applications/forward", "parentId": "root", "path": "api/internships/applications/forward", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forward-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-698120b4.js", "version": "698120b4", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "unstable_optimizeDeps": false, "unstable_subResourceIntegrity": false, "unstable_trailingSlashAwareDataRequests": false, "v8_middleware": false, "v8_splitRouteModules": false, "v8_viteEnvironmentApi": false };
@@ -2726,6 +4454,78 @@ const routes = {
     index: void 0,
     caseSensitive: void 0,
     module: route9
+  },
+  "routes/internships/index": {
+    id: "routes/internships/index",
+    parentId: "root",
+    path: "internships",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route10
+  },
+  "routes/internships/new": {
+    id: "routes/internships/new",
+    parentId: "root",
+    path: "internships/new",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route11
+  },
+  "routes/internships/$id": {
+    id: "routes/internships/$id",
+    parentId: "root",
+    path: "internships/:id",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route12
+  },
+  "routes/internships/$id/applications": {
+    id: "routes/internships/$id/applications",
+    parentId: "root",
+    path: "internships/:id/applications",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route13
+  },
+  "routes/api/internships/route": {
+    id: "routes/api/internships/route",
+    parentId: "root",
+    path: "api/internships",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route14
+  },
+  "routes/api/internships/$id": {
+    id: "routes/api/internships/$id",
+    parentId: "root",
+    path: "api/internships/:id",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route15
+  },
+  "routes/api/internships/$id/applications": {
+    id: "routes/api/internships/$id/applications",
+    parentId: "root",
+    path: "api/internships/:id/applications",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route16
+  },
+  "routes/api/internships/applications/$id": {
+    id: "routes/api/internships/applications/$id",
+    parentId: "root",
+    path: "api/internships/applications/:id",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route17
+  },
+  "routes/api/internships/applications/forward": {
+    id: "routes/api/internships/applications/forward",
+    parentId: "root",
+    path: "api/internships/applications/forward",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route18
   }
 };
 const allowedActionOrigins = false;

@@ -2,21 +2,21 @@ import { useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
-import { BlogForm } from "~/components/blog/blog-form";
+import { InternshipForm } from "~/components/internship/internship-form";
 import { DashboardLayout } from "~/components/dashboard/layout";
 import type { Route } from "./+types/new";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New Blog Post – Maverick" },
+    { title: "New Internship – Maverick" },
     {
       name: "description",
-      content: "Create a new blog post",
+      content: "Create a new internship listing",
     },
   ];
 }
 
-export default function NewBlogPost() {
+export default function NewInternship() {
   const navigate = useNavigate();
   const { isAuthorized, isPending } = useOpsGuard();
 
@@ -28,7 +28,7 @@ export default function NewBlogPost() {
         return;
       }
 
-      const response = await fetch("/api/blog", {
+      const response = await fetch("/api/internships", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -39,15 +39,15 @@ export default function NewBlogPost() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to create post");
+        throw new Error(error.error || "Failed to create internship");
       }
 
       const result = await response.json();
-      toast.success("Post created successfully");
-      navigate(`/blog/${result.post.id}`);
+      toast.success("Internship created successfully");
+      navigate(`/internships/${result.internship.id}`);
     } catch (error: any) {
-      console.error("Error creating post:", error);
-      toast.error(error.message || "Failed to create post");
+      console.error("Error creating internship:", error);
+      toast.error(error.message || "Failed to create internship");
     }
   };
 
@@ -71,15 +71,15 @@ export default function NewBlogPost() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="font-['Clash_Display'] text-4xl font-bold text-neutral-900">
-            New Blog Post
+            New Internship
           </h1>
           <p className="mt-2 font-['Satoshi'] text-sm text-gray-600">
-            Create a new blog post
+            Create a new internship listing
           </p>
         </div>
 
         <div className="rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden">
-          <BlogForm onSubmit={handleSubmit} onCancel={() => navigate("/")}           />
+          <InternshipForm onSubmit={handleSubmit} onCancel={() => navigate("/internships")}           />
         </div>
       </div>
     </DashboardLayout>
