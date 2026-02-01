@@ -1,0 +1,201 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Clash Display", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-satoshi: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-clash: "Clash Display", ui-sans-serif, system-ui, sans-serif;
+
+  /* Studojo design system – reference colors */
+  --color-studojo-ink: #171717;
+  --color-studojo-muted: #525252;
+  --color-studojo-surface: #ffffff;
+  --color-studojo-surface-muted: #f5f5f5;
+
+  /* Brand – neo‑brutalist palette */
+  --color-studojo-purple: #8b5cf6;
+  --color-studojo-purple-light: #dab2ff;
+  --color-studojo-purple-bg: #faf5fe;
+  --color-studojo-purple-300: #dab2ff;
+  --color-studojo-green: #10b981;
+  --color-studojo-green-bg: #d0fae4;
+  --color-studojo-emerald-300: #5ee9b5;
+  --color-studojo-emerald-500: #10b981;
+  --color-studojo-orange: #f59e0b;
+  --color-studojo-orange-bg: #fef3c6;
+  --color-studojo-amber-400: #fbbf24;
+  --color-studojo-amber-500: #f59e0b;
+  --color-studojo-pink: #ec4899;
+  --color-studojo-pink-bg: #fdf2f8;
+  --color-studojo-pink-300: #fda5d5;
+  --color-studojo-yellow: #eab308;
+  --color-studojo-yellow-bg: #fefce8;
+  --color-studojo-yellow-500: #eab308;
+  --color-studojo-violet-500: #8b5cf6;
+  --color-studojo-teal: #14b8a6;
+  --color-studojo-neutral-900: #171717;
+  --shadow-brutal: 4px 4px 0px 0px rgba(25, 26, 35, 1);
+  --shadow-brutal-lg: 6px 6px 0px 0px rgba(25, 26, 35, 1);
+  --shadow-brutal-xl: 8px 8px 0px 0px rgba(25, 26, 35, 1);
+
+  --font-size-stat-value: 2.5rem;
+  --font-size-stat-value-mobile: 2rem;
+  --font-size-stat-label: 1rem;
+  --section-padding-y: 4rem;
+  --section-padding-y-mobile: 2.5rem;
+  --section-padding-x: 2rem;
+  --section-max-width: 80rem;
+  --stat-gap: 3rem;
+  --stat-gap-mobile: 2rem;
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+  --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+html,
+body {
+  @apply bg-white text-[var(--color-studojo-ink)] antialiased;
+  font-family: var(--font-sans);
+}
+
+/* Wave Pattern Animation */
+@keyframes wave {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(25px) translateY(-10px);
+  }
+  50% {
+    transform: translateX(50px) translateY(0);
+  }
+  75% {
+    transform: translateX(25px) translateY(10px);
+  }
+}
+
+@keyframes wave-reverse {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(-25px) translateY(10px);
+  }
+  50% {
+    transform: translateX(-50px) translateY(0);
+  }
+  75% {
+    transform: translateX(-25px) translateY(-10px);
+  }
+}
+
+.wave-bg {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(20, 184, 166, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+  animation: wave 20s ease-in-out infinite;
+}
+
+.wave-bg::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 60% 30%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+  animation: wave-reverse 25s ease-in-out infinite;
+}
+
+/* TipTap Editor Content Styles */
+.tiptap-editor-content {
+  @apply prose prose-lg max-w-none focus:outline-none min-h-[500px] p-6 font-['Satoshi'];
+  box-sizing: border-box;
+}
+
+.tiptap-editor-content:focus {
+  outline: none;
+}
+
+/* Prose Typography Styles */
+.tiptap-editor-content .ProseMirror {
+  outline: none;
+}
+
+.tiptap-editor-content h1 {
+  @apply font-['Clash_Display'] font-bold text-neutral-900 tracking-tight text-4xl mb-4 mt-6;
+}
+
+.tiptap-editor-content h2 {
+  @apply font-['Clash_Display'] font-bold text-neutral-900 tracking-tight text-3xl mb-3 mt-5;
+}
+
+.tiptap-editor-content h3 {
+  @apply font-['Clash_Display'] font-bold text-neutral-900 tracking-tight text-2xl mb-2 mt-4;
+}
+
+.tiptap-editor-content p {
+  @apply text-neutral-700 leading-relaxed mb-4 text-base;
+}
+
+.tiptap-editor-content a {
+  @apply text-violet-600 font-medium no-underline;
+}
+
+.tiptap-editor-content a:hover {
+  @apply underline;
+}
+
+.tiptap-editor-content strong {
+  @apply font-bold text-neutral-900;
+}
+
+.tiptap-editor-content ul,
+.tiptap-editor-content ol {
+  @apply text-neutral-700 my-4 pl-6;
+}
+
+.tiptap-editor-content li {
+  @apply text-neutral-700 my-2 leading-relaxed;
+}
+
+.tiptap-editor-content img {
+  @apply rounded-lg border border-neutral-200 my-6 shadow-sm;
+}
+
+.tiptap-editor-content blockquote {
+  @apply border-l-4 border-violet-500 pl-6 pr-4 py-2 italic bg-violet-50 text-neutral-800 my-4;
+}
+
+.tiptap-editor-content code {
+  @apply bg-violet-100 px-1.5 py-0.5 rounded text-violet-700 font-mono text-sm;
+}
+
+.tiptap-editor-content pre {
+  @apply bg-neutral-900 text-neutral-100 p-4 rounded-lg my-4 overflow-x-auto;
+}
+
+.tiptap-editor-content pre code {
+  @apply bg-transparent text-neutral-100 p-0;
+}
+
+.tiptap-editor-content hr {
+  @apply border-neutral-300 my-8;
+}
+
+/* Placeholder Styles */
+.tiptap-editor-content .is-empty::before {
+  content: attr(data-placeholder);
+  @apply text-neutral-400 pointer-events-none float-left h-0;
+}
+
