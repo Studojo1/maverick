@@ -1,6 +1,7 @@
 import type { Route } from "./+types/api.auth.check-role";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
+import { verifyToken } from "~/lib/jwks.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   // Extract JWT token from Authorization header
@@ -11,23 +12,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const token = authHeader.substring(7);
 
-  // Decode JWT to get user ID (without verification for now - in production, verify via JWKS)
-  // JWT format: header.payload.signature
-  // We'll extract the payload to get the user ID
+  // Verify JWT token using JWKS (cryptographically verified)
   try {
-    const parts = token.split(".");
-    if (parts.length !== 3) {
-      return Response.json({ error: "Invalid token format" }, { status: 401 });
-    }
-
-    // Decode base64url payload
-    const payload = JSON.parse(
-      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()
-    );
-
-    const userId = payload.sub || payload.userId;
+    const userId = await verifyToken(token);
     if (!userId) {
-      return Response.json({ error: "Token missing user ID" }, { status: 401 });
+      return Response.json({ error: "Invalid or expired token" }, { status: 401 });
     }
 
     // Get user role from database

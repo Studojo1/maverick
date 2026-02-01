@@ -1,6 +1,10 @@
 import type { Route } from "./+types/upload-image";
 import { getUserFromRequest } from "~/lib/auth-helper.server";
 import { uploadBlogImage } from "~/lib/blob-storage.server";
+import {
+  validateFileContent,
+  generateUniqueFilename,
+} from "~/lib/file-validation.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
 
@@ -33,11 +37,21 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // Validate file type
+  // Validate file type (MIME type check)
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-  if (!allowedTypes.includes(file.type)) {
+  const mimeType = file.type || "image/jpeg";
+  if (!allowedTypes.includes(mimeType)) {
     return Response.json(
       { error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." },
+      { status: 400 }
+    );
+  }
+
+  // Validate file content using magic bytes (prevents MIME type spoofing)
+  const isValidContent = await validateFileContent(file, mimeType);
+  if (!isValidContent) {
+    return Response.json(
+      { error: "File content does not match declared file type. Possible file type spoofing." },
       { status: 400 }
     );
   }
@@ -52,12 +66,15 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   try {
-    // Upload to Azure Blob Storage
-    const url = await uploadBlogImage(file, file.name);
+    // Generate unique, sanitized filename
+    const uniqueFilename = generateUniqueFilename(file.name);
+    
+    // Upload to Azure Blob Storage with sanitized filename
+    const url = await uploadBlogImage(file, uniqueFilename);
     
     return Response.json({
       url,
-      filename: file.name,
+      filename: uniqueFilename,
     });
   } catch (error: any) {
     console.error("Error uploading image:", error);
