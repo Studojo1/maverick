@@ -111,7 +111,7 @@ export default function MaverickLogin() {
             Maverick
           </h1>
           <p className="mt-2 font-['Satoshi'] text-sm font-normal leading-6 text-gray-600">
-            Sign in to access the blog editor
+            Sign in to access the Ops platform.
           </p>
         </div>
 
