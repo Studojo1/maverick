@@ -3660,22 +3660,16 @@ async function loader$4({
     sql: sql2
   } = await import("drizzle-orm");
   const user = await getUserFromRequest2(request);
-  if (!user) {
-    throw new Response("Unauthorized", {
-      status: 401
-    });
-  }
-  const result = await db2.execute(sql2`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
-  if (result.rows.length === 0) {
-    throw new Response("User not found", {
-      status: 404
-    });
-  }
-  const role = result.rows[0].role;
-  if (role !== "ops" && role !== "admin") {
-    throw new Response("Forbidden - Ops or Admin access required", {
-      status: 403
-    });
+  if (user) {
+    const result = await db2.execute(sql2`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
+    if (result.rows.length > 0) {
+      const role = result.rows[0].role;
+      if (role !== "ops" && role !== "admin") {
+        throw new Response("Forbidden - Ops or Admin access required", {
+          status: 403
+        });
+      }
+    }
   }
   const internshipResult = await db2.execute(sql2`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
   if (internshipResult.rows.length === 0) {

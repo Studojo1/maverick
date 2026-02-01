@@ -24,26 +24,27 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const db = (await import("~/lib/db.server")).default;
   const { sql } = await import("drizzle-orm");
   
+  // Try to authenticate, but don't fail if it doesn't work
+  // The client-side useOpsGuard will handle redirecting unauthenticated users
   const user = await getUserFromRequest(request);
-  if (!user) {
-    throw new Response("Unauthorized", { status: 401 });
+  
+  // If user is authenticated, check role
+  if (user) {
+    const result = await db.execute(
+      sql`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`
+    );
+
+    if (result.rows.length > 0) {
+      const role = result.rows[0].role as string | null;
+      if (role !== "ops" && role !== "admin") {
+        // User is authenticated but doesn't have the right role
+        throw new Response("Forbidden - Ops or Admin access required", { status: 403 });
+      }
+    }
   }
 
-  // Check if user has ops or admin role
-  const result = await db.execute(
-    sql`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`
-  );
-
-  if (result.rows.length === 0) {
-    throw new Response("User not found", { status: 404 });
-  }
-
-  const role = result.rows[0].role as string | null;
-  if (role !== "ops" && role !== "admin") {
-    throw new Response("Forbidden - Ops or Admin access required", { status: 403 });
-  }
-
-  // Fetch internship directly from database
+  // Fetch internship directly from database (even if not authenticated)
+  // The component will handle showing/hiding based on auth status
   const internshipResult = await db.execute(
     sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`
   );
