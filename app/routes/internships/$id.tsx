@@ -5,6 +5,9 @@ import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { InternshipForm } from "~/components/internship/internship-form";
 import { DashboardLayout } from "~/components/dashboard/layout";
+import { getUserFromRequest } from "~/lib/auth-helper.server";
+import db from "~/lib/db.server";
+import { sql } from "drizzle-orm";
 import type { Route } from "./+types/$id";
 
 export function meta({}: Route.MetaArgs) {
@@ -19,27 +22,36 @@ export function meta({}: Route.MetaArgs) {
 
 export async function loader({ params, request }: Route.LoaderArgs) {
   const { id } = params;
-  const token = await getToken();
   
-  if (!token) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
     throw new Response("Unauthorized", { status: 401 });
   }
 
-  const response = await fetch(`${new URL(request.url).origin}/api/internships/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  // Check if user has ops or admin role
+  const result = await db.execute(
+    sql`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`
+  );
 
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Response("Internship not found", { status: 404 });
-    }
-    throw new Response("Failed to load internship", { status: 500 });
+  if (result.rows.length === 0) {
+    throw new Response("User not found", { status: 404 });
   }
 
-  const data = await response.json();
-  return { internship: data.internship };
+  const role = result.rows[0].role as string | null;
+  if (role !== "ops" && role !== "admin") {
+    throw new Response("Forbidden - Ops or Admin access required", { status: 403 });
+  }
+
+  // Fetch internship directly from database
+  const internshipResult = await db.execute(
+    sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`
+  );
+
+  if (internshipResult.rows.length === 0) {
+    throw new Response("Internship not found", { status: 404 });
+  }
+
+  return { internship: internshipResult.rows[0] };
 }
 
 export default function EditInternship({ data }: Route.ComponentProps) {

@@ -2002,6 +2002,10 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 const db = drizzle({ client: pool });
+const db_server = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: db
+}, Symbol.toStringTag, { value: "Module" }));
 const JWKS_URL = process.env.JWKS_URL || process.env.VITE_AUTH_URL ? `${process.env.VITE_AUTH_URL || "http://localhost:3000"}/api/auth/jwks` : "http://localhost:3000/api/auth/jwks";
 let jwks = null;
 function getJWKS() {
@@ -2116,6 +2120,12 @@ async function getUserFromRequest(request) {
   }
   return getUserInfo(userId);
 }
+const authHelper_server = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  getUserFromRequest,
+  getUserIdFromToken,
+  getUserInfo
+}, Symbol.toStringTag, { value: "Module" }));
 const accountName$1 = process.env.AZURE_STORAGE_ACCOUNT_NAME || "";
 const accountKey$1 = process.env.AZURE_STORAGE_ACCOUNT_KEY || "";
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "blog-images";
@@ -3300,30 +3310,39 @@ async function loader$5({
   const {
     id
   } = params;
-  const token = await getToken();
-  if (!token) {
+  const {
+    getUserFromRequest: getUserFromRequest2
+  } = await Promise.resolve().then(() => authHelper_server);
+  const db2 = (await Promise.resolve().then(() => db_server)).default;
+  const {
+    sql: sql2
+  } = await import("drizzle-orm");
+  const user = await getUserFromRequest2(request);
+  if (!user) {
     throw new Response("Unauthorized", {
       status: 401
     });
   }
-  const response = await fetch(`${new URL(request.url).origin}/api/internships/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Response("Internship not found", {
-        status: 404
-      });
-    }
-    throw new Response("Failed to load internship", {
-      status: 500
+  const result = await db2.execute(sql2`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
+  if (result.rows.length === 0) {
+    throw new Response("User not found", {
+      status: 404
     });
   }
-  const data = await response.json();
+  const role = result.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    throw new Response("Forbidden - Ops or Admin access required", {
+      status: 403
+    });
+  }
+  const internshipResult = await db2.execute(sql2`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
+  if (internshipResult.rows.length === 0) {
+    throw new Response("Internship not found", {
+      status: 404
+    });
+  }
   return {
-    internship: data.internship
+    internship: internshipResult.rows[0]
   };
 }
 const $id = UNSAFE_withComponentProps(function EditInternship({
@@ -3607,25 +3626,39 @@ async function loader$4({
   const {
     id
   } = params;
-  const token = await getToken();
-  if (!token) {
+  const {
+    getUserFromRequest: getUserFromRequest2
+  } = await Promise.resolve().then(() => authHelper_server);
+  const db2 = (await Promise.resolve().then(() => db_server)).default;
+  const {
+    sql: sql2
+  } = await import("drizzle-orm");
+  const user = await getUserFromRequest2(request);
+  if (!user) {
     throw new Response("Unauthorized", {
       status: 401
     });
   }
-  const response = await fetch(`${new URL(request.url).origin}/api/internships/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-  if (!response.ok) {
-    throw new Response("Failed to load internship", {
-      status: 500
+  const result = await db2.execute(sql2`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
+  if (result.rows.length === 0) {
+    throw new Response("User not found", {
+      status: 404
     });
   }
-  const data = await response.json();
+  const role = result.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    throw new Response("Forbidden - Ops or Admin access required", {
+      status: 403
+    });
+  }
+  const internshipResult = await db2.execute(sql2`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
+  if (internshipResult.rows.length === 0) {
+    throw new Response("Internship not found", {
+      status: 404
+    });
+  }
   return {
-    internship: data.internship
+    internship: internshipResult.rows[0]
   };
 }
 const applications = UNSAFE_withComponentProps(function ApplicationsList({
