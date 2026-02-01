@@ -38,7 +38,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   // Verify all applications belong to the same internship
   const applicationsCheck = await db.execute(
-    sql`SELECT internship_id FROM internship_applications WHERE id = ANY(${application_ids})`
+    sql`SELECT internship_id FROM public.internship_applications WHERE id = ANY(${application_ids})`
   );
 
   const uniqueInternshipIds = [...new Set(applicationsCheck.rows.map((r: any) => r.internship_id))];
@@ -52,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
   // Create company token record
   const tokenResult = await db.execute(
     sql`
-      INSERT INTO company_tokens (
+      INSERT INTO public.company_tokens (
         token, internship_id, application_ids, created_by, expires_at
       ) VALUES (
         ${token}, ${internship_id}, ${JSON.stringify(application_ids)}::jsonb, ${user.id},
@@ -64,7 +64,7 @@ export async function action({ request }: Route.ActionArgs) {
   // Update applications to forwarded status
   await db.execute(
     sql`
-      UPDATE internship_applications SET
+      UPDATE public.internship_applications SET
         status = 'forwarded',
         company_token = ${token},
         forwarded_at = NOW(),

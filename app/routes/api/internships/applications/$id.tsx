@@ -39,7 +39,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   const updateResult = await db.execute(
     sql`
-      UPDATE internship_applications SET
+      UPDATE public.internship_applications SET
         status = ${status},
         admin_notes = COALESCE(${admin_notes || null}, admin_notes),
         updated_at = NOW()

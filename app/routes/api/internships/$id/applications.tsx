@@ -34,9 +34,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       u.name as user_name,
       u.email as user_email,
       r.name as resume_name
-    FROM internship_applications ia
-    JOIN "user" u ON ia.user_id = u.id
-    JOIN resumes r ON ia.resume_id = r.id
+    FROM public.internship_applications ia
+    JOIN public."user" u ON ia.user_id = u.id
+    JOIN public.resumes r ON ia.resume_id = r.id
     WHERE ia.internship_id = ${internshipId}
   `;
 

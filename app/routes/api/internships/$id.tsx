@@ -28,7 +28,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const { id } = params;
 
   const internshipResult = await db.execute(
-    sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`
+    sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`
   );
 
   if (internshipResult.rows.length === 0) {
@@ -65,7 +65,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   // Handle DELETE request
   if (request.method === "DELETE") {
     await db.execute(
-      sql`DELETE FROM internships WHERE id = ${id}`
+      sql`DELETE FROM public.internships WHERE id = ${id}`
     );
 
     return Response.json({ success: true });
@@ -77,7 +77,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // Check if internship exists
   const existingResult = await db.execute(
-    sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`
+    sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`
   );
 
   if (existingResult.rows.length === 0) {
@@ -96,7 +96,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     // Ensure uniqueness
     while (true) {
       const slugCheck = await db.execute(
-        sql`SELECT id FROM internships WHERE slug = ${slug} AND id != ${id} LIMIT 1`
+        sql`SELECT id FROM public.internships WHERE slug = ${slug} AND id != ${id} LIMIT 1`
       );
       if (slugCheck.rows.length === 0) {
         break;
@@ -109,7 +109,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   // Update internship
   const updateResult = await db.execute(
     sql`
-      UPDATE internships SET
+      UPDATE public.internships SET
         title = COALESCE(${title || null}, title),
         company_name = COALESCE(${company_name || null}, company_name),
         description = COALESCE(${description || null}, description),

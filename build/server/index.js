@@ -3981,8 +3981,8 @@ async function loader$3({
     const searchPattern = `%${search}%`;
     whereClause = sql`${whereClause} AND (title ILIKE ${searchPattern} OR company_name ILIKE ${searchPattern})`;
   }
-  const internships = await db.execute(sql`SELECT * FROM internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
-  const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM internships WHERE ${whereClause}`);
+  const internships = await db.execute(sql`SELECT * FROM public.internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
+  const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM public.internships WHERE ${whereClause}`);
   const total = parseInt(countResult.rows[0].total, 10);
   return Response.json({
     internships: internships.rows,
@@ -4045,7 +4045,7 @@ async function action$3({
   let counter = 1;
   let originalSlug = slug;
   while (true) {
-    const existing = await db.execute(sql`SELECT id FROM internships WHERE slug = ${slug} LIMIT 1`);
+    const existing = await db.execute(sql`SELECT id FROM public.internships WHERE slug = ${slug} LIMIT 1`);
     if (existing.rows.length === 0) {
       break;
     }
@@ -4053,7 +4053,7 @@ async function action$3({
     counter++;
   }
   const result = await db.execute(sql`
-      INSERT INTO internships (
+      INSERT INTO public.internships (
         title, company_name, description, requirements, location, duration, stipend,
         application_deadline, status, slug, created_by
       ) VALUES (
@@ -4105,7 +4105,7 @@ async function loader$2({
   const {
     id
   } = params;
-  const internshipResult = await db.execute(sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`);
+  const internshipResult = await db.execute(sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
   if (internshipResult.rows.length === 0) {
     return Response.json({
       error: "Internship not found"
@@ -4149,7 +4149,7 @@ async function action$2({
     id
   } = params;
   if (request.method === "DELETE") {
-    await db.execute(sql`DELETE FROM internships WHERE id = ${id}`);
+    await db.execute(sql`DELETE FROM public.internships WHERE id = ${id}`);
     return Response.json({
       success: true
     });
@@ -4166,7 +4166,7 @@ async function action$2({
     application_deadline,
     status
   } = body;
-  const existingResult = await db.execute(sql`SELECT * FROM internships WHERE id = ${id} LIMIT 1`);
+  const existingResult = await db.execute(sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
   if (existingResult.rows.length === 0) {
     return Response.json({
       error: "Internship not found"
@@ -4184,7 +4184,7 @@ async function action$2({
     let counter = 1;
     let originalSlug = slug;
     while (true) {
-      const slugCheck = await db.execute(sql`SELECT id FROM internships WHERE slug = ${slug} AND id != ${id} LIMIT 1`);
+      const slugCheck = await db.execute(sql`SELECT id FROM public.internships WHERE slug = ${slug} AND id != ${id} LIMIT 1`);
       if (slugCheck.rows.length === 0) {
         break;
       }
@@ -4193,7 +4193,7 @@ async function action$2({
     }
   }
   const updateResult = await db.execute(sql`
-      UPDATE internships SET
+      UPDATE public.internships SET
         title = COALESCE(${title || null}, title),
         company_name = COALESCE(${company_name || null}, company_name),
         description = COALESCE(${description || null}, description),
@@ -4257,9 +4257,9 @@ async function loader$1({
       u.name as user_name,
       u.email as user_email,
       r.name as resume_name
-    FROM internship_applications ia
-    JOIN "user" u ON ia.user_id = u.id
-    JOIN resumes r ON ia.resume_id = r.id
+    FROM public.internship_applications ia
+    JOIN public."user" u ON ia.user_id = u.id
+    JOIN public.resumes r ON ia.resume_id = r.id
     WHERE ia.internship_id = ${internshipId}
   `;
   if (status && status !== "all") {
@@ -4336,7 +4336,7 @@ async function action$1({
     });
   }
   const updateResult = await db.execute(sql`
-      UPDATE internship_applications SET
+      UPDATE public.internship_applications SET
         status = ${status},
         admin_notes = COALESCE(${admin_notes || null}, admin_notes),
         updated_at = NOW()
@@ -4396,9 +4396,9 @@ async function loader({
         ia.resume_id,
         r.name as resume_name,
         u.name as user_name
-      FROM internship_applications ia
-      JOIN resumes r ON ia.resume_id = r.id
-      JOIN "user" u ON ia.user_id = u.id
+      FROM public.internship_applications ia
+      JOIN public.resumes r ON ia.resume_id = r.id
+      JOIN public."user" u ON ia.user_id = u.id
       WHERE ia.id = ${applicationId}
       LIMIT 1
     `);
@@ -4473,7 +4473,7 @@ async function action({
       status: 400
     });
   }
-  const applicationsCheck = await db.execute(sql`SELECT internship_id FROM internship_applications WHERE id = ANY(${application_ids})`);
+  const applicationsCheck = await db.execute(sql`SELECT internship_id FROM public.internship_applications WHERE id = ANY(${application_ids})`);
   const uniqueInternshipIds = [...new Set(applicationsCheck.rows.map((r) => r.internship_id))];
   if (uniqueInternshipIds.length !== 1 || uniqueInternshipIds[0] !== internship_id) {
     return Response.json({
@@ -4484,7 +4484,7 @@ async function action({
   }
   const token = randomBytes(32).toString("hex");
   const tokenResult = await db.execute(sql`
-      INSERT INTO company_tokens (
+      INSERT INTO public.company_tokens (
         token, internship_id, application_ids, created_by, expires_at
       ) VALUES (
         ${token}, ${internship_id}, ${JSON.stringify(application_ids)}::jsonb, ${user.id},
@@ -4492,7 +4492,7 @@ async function action({
       ) RETURNING *
     `);
   await db.execute(sql`
-      UPDATE internship_applications SET
+      UPDATE public.internship_applications SET
         status = 'forwarded',
         company_token = ${token},
         forwarded_at = NOW(),

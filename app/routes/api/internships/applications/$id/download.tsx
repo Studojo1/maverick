@@ -34,9 +34,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         ia.resume_id,
         r.name as resume_name,
         u.name as user_name
-      FROM internship_applications ia
-      JOIN resumes r ON ia.resume_id = r.id
-      JOIN "user" u ON ia.user_id = u.id
+      FROM public.internship_applications ia
+      JOIN public.resumes r ON ia.resume_id = r.id
+      JOIN public."user" u ON ia.user_id = u.id
       WHERE ia.id = ${applicationId}
       LIMIT 1
     `

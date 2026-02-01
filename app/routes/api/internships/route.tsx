@@ -45,11 +45,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const internships = await db.execute(
-    sql`SELECT * FROM internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    sql`SELECT * FROM public.internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
   );
   
   const countResult = await db.execute(
-    sql`SELECT COUNT(*) as total FROM internships WHERE ${whereClause}`
+    sql`SELECT COUNT(*) as total FROM public.internships WHERE ${whereClause}`
   );
 
   const total = parseInt((countResult.rows[0] as any).total, 10);
@@ -99,7 +99,7 @@ export async function action({ request }: Route.ActionArgs) {
   // Ensure uniqueness
   while (true) {
     const existing = await db.execute(
-      sql`SELECT id FROM internships WHERE slug = ${slug} LIMIT 1`
+      sql`SELECT id FROM public.internships WHERE slug = ${slug} LIMIT 1`
     );
     if (existing.rows.length === 0) {
       break;
@@ -111,7 +111,7 @@ export async function action({ request }: Route.ActionArgs) {
   // Insert internship
   const result = await db.execute(
     sql`
-      INSERT INTO internships (
+      INSERT INTO public.internships (
         title, company_name, description, requirements, location, duration, stipend,
         application_deadline, status, slug, created_by
       ) VALUES (
