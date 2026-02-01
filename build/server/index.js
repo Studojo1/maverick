@@ -2110,15 +2110,40 @@ async function getUserInfo(userId) {
 }
 async function getUserFromRequest(request) {
   const authHeader = request.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    const userId = await getUserIdFromToken(token);
+    if (userId) {
+      return getUserInfo(userId);
+    }
   }
-  const token = authHeader.substring(7);
-  const userId = await getUserIdFromToken(token);
-  if (!userId) {
-    return null;
+  const frontendUrl = process.env.VITE_AUTH_URL || "http://localhost:3000";
+  const cookies = request.headers.get("Cookie");
+  if (cookies) {
+    try {
+      const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
+        method: "GET",
+        headers: {
+          "Cookie": cookies,
+          "Content-Type": "application/json"
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.token) {
+          const userId = await getUserIdFromToken(data.token);
+          if (userId) {
+            return getUserInfo(userId);
+          }
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.debug("Failed to get token from frontend:", error);
+      }
+    }
   }
-  return getUserInfo(userId);
+  return null;
 }
 const authHelper_server = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
@@ -3310,20 +3335,13 @@ async function loader$5({
   const {
     id
   } = params;
-  const {
-    getUserFromRequest: getUserFromRequest2
-  } = await Promise.resolve().then(() => authHelper_server);
-  const db2 = (await Promise.resolve().then(() => db_server)).default;
-  const {
-    sql: sql2
-  } = await import("drizzle-orm");
-  const user = await getUserFromRequest2(request);
+  const user = await getUserFromRequest(request);
   if (!user) {
     throw new Response("Unauthorized", {
       status: 401
     });
   }
-  const result = await db2.execute(sql2`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
+  const result = await db.execute(sql`SELECT role FROM public."user" WHERE id = ${user.id} LIMIT 1`);
   if (result.rows.length === 0) {
     throw new Response("User not found", {
       status: 404
@@ -3335,7 +3353,7 @@ async function loader$5({
       status: 403
     });
   }
-  const internshipResult = await db2.execute(sql2`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
+  const internshipResult = await db.execute(sql`SELECT * FROM public.internships WHERE id = ${id} LIMIT 1`);
   if (internshipResult.rows.length === 0) {
     throw new Response("Internship not found", {
       status: 404

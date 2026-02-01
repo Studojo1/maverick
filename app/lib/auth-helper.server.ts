@@ -45,19 +45,50 @@ export async function getUserInfo(userId: string): Promise<UserInfo | null> {
 
 /**
  * Get user info from Authorization header with verified JWT token
+ * Also supports getting token from cookies via frontend share-token endpoint
  */
 export async function getUserFromRequest(request: Request): Promise<UserInfo | null> {
+  // First, try Authorization header
   const authHeader = request.headers.get("Authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.substring(7);
+    const userId = await getUserIdFromToken(token);
+    if (userId) {
+      return getUserInfo(userId);
+    }
   }
 
-  const token = authHeader.substring(7);
-  const userId = await getUserIdFromToken(token);
-  if (!userId) {
-    return null;
+  // If no Authorization header, try to get token from cookies via frontend
+  const frontendUrl = process.env.VITE_AUTH_URL || "http://localhost:3000";
+  const cookies = request.headers.get("Cookie");
+  
+  if (cookies) {
+    try {
+      const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
+        method: "GET",
+        headers: {
+          "Cookie": cookies,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.token) {
+          const userId = await getUserIdFromToken(data.token);
+          if (userId) {
+            return getUserInfo(userId);
+          }
+        }
+      }
+    } catch (error) {
+      // Silently fail and return null
+      if (process.env.NODE_ENV === "development") {
+        console.debug("Failed to get token from frontend:", error);
+      }
+    }
   }
 
-  return getUserInfo(userId);
+  return null;
 }
 
