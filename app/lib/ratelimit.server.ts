@@ -38,8 +38,9 @@ export interface RateLimitConfig {
 }
 
 // Default rate limit configurations
+// For internal software with continuous auth checks, auth limits are higher
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
-  auth: { requests: 5, window: 60 }, // 5 requests per minute for auth
+  auth: { requests: 200, window: 60 }, // 200 requests per minute for auth (internal software with continuous checks)
   payment: { requests: 10, window: 60 }, // 10 requests per minute for payments
   admin: { requests: 30, window: 60 }, // 30 requests per minute for admin
   default: { requests: 100, window: 60 }, // 100 requests per minute for general endpoints
