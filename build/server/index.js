@@ -2120,13 +2120,17 @@ async function getUserFromRequest(request) {
   const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.pro";
   const cookies = request.headers.get("Cookie");
   if (cookies) {
+    cookies.match(/(?:^|;\s*)(?:better-auth\.session_token|session_token|better-auth\.session)=([^;]+)/i);
     try {
+      const origin = request.headers.get("Origin") || `https://${new URL(frontendUrl).hostname}`;
       const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
         method: "GET",
         headers: {
           "Cookie": cookies,
           "Content-Type": "application/json",
-          "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0"
+          "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0",
+          "Origin": origin,
+          "Referer": request.headers.get("Referer") || `${origin}/`
         },
         // Important: don't follow redirects
         redirect: "manual"
@@ -2140,21 +2144,18 @@ async function getUserFromRequest(request) {
           }
         }
       } else {
-        if (process.env.NODE_ENV === "development") {
-          console.debug(`Failed to get token from frontend: ${response.status} ${response.statusText}`);
-          const text = await response.text().catch(() => "");
-          console.debug("Response:", text.substring(0, 200));
+        console.debug(`[auth-helper] Failed to get token from frontend: ${response.status} ${response.statusText}`);
+        try {
+          const text = await response.text();
+          console.debug(`[auth-helper] Response: ${text.substring(0, 200)}`);
+        } catch (e) {
         }
       }
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.debug("Failed to get token from frontend:", error);
-      }
+      console.debug(`[auth-helper] Failed to get token from frontend:`, error);
     }
   } else {
-    if (process.env.NODE_ENV === "development") {
-      console.debug("No cookies found in request");
-    }
+    console.debug("[auth-helper] No cookies found in request");
   }
   return null;
 }

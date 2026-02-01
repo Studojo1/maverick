@@ -62,15 +62,27 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
   const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.pro";
   const cookies = request.headers.get("Cookie");
   
+  // Also check for Better Auth session cookie directly
+  // Better Auth uses cookies like "better-auth.session_token" or similar
   if (cookies) {
+    // Try to extract session token from cookies and verify it directly
+    const cookieMatch = cookies.match(/(?:^|;\s*)(?:better-auth\.session_token|session_token|better-auth\.session)=([^;]+)/i);
+    if (cookieMatch) {
+      // If we have a session cookie, we could try to verify it, but Better Auth
+      // doesn't expose a direct API for this. So we'll still use the share-token endpoint.
+    }
+    
     try {
-      // Forward all cookies to frontend
+      // Forward all cookies to frontend, including Origin header for CORS
+      const origin = request.headers.get("Origin") || `https://${new URL(frontendUrl).hostname}`;
       const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
         method: "GET",
         headers: {
           "Cookie": cookies,
           "Content-Type": "application/json",
           "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0",
+          "Origin": origin,
+          "Referer": request.headers.get("Referer") || `${origin}/`,
         },
         // Important: don't follow redirects
         redirect: "manual",
@@ -85,23 +97,21 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
           }
         }
       } else {
-        // Log the error for debugging
-        if (process.env.NODE_ENV === "development") {
-          console.debug(`Failed to get token from frontend: ${response.status} ${response.statusText}`);
-          const text = await response.text().catch(() => "");
-          console.debug("Response:", text.substring(0, 200));
+        // Log the error for debugging (always log in production too for now)
+        console.debug(`[auth-helper] Failed to get token from frontend: ${response.status} ${response.statusText}`);
+        try {
+          const text = await response.text();
+          console.debug(`[auth-helper] Response: ${text.substring(0, 200)}`);
+        } catch (e) {
+          // Ignore
         }
       }
     } catch (error) {
       // Log error for debugging
-      if (process.env.NODE_ENV === "development") {
-        console.debug("Failed to get token from frontend:", error);
-      }
+      console.debug(`[auth-helper] Failed to get token from frontend:`, error);
     }
   } else {
-    if (process.env.NODE_ENV === "development") {
-      console.debug("No cookies found in request");
-    }
+    console.debug("[auth-helper] No cookies found in request");
   }
 
   return null;
