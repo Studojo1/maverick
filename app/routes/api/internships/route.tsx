@@ -33,22 +33,23 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const offset = (page - 1) * limit;
 
-  let query = sql`SELECT * FROM internships WHERE 1=1`;
-  const params: any[] = [];
-
+  let whereClause = sql`1=1`;
+  
   if (status && status !== "all") {
-    query = sql`${query} AND status = ${status}`;
+    whereClause = sql`${whereClause} AND status = ${status}`;
   }
 
   if (search) {
-    query = sql`${query} AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})`;
+    const searchPattern = `%${search}%`;
+    whereClause = sql`${whereClause} AND (title ILIKE ${searchPattern} OR company_name ILIKE ${searchPattern})`;
   }
 
-  query = sql`${query} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-
-  const internships = await db.execute(query);
+  const internships = await db.execute(
+    sql`SELECT * FROM internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`
+  );
+  
   const countResult = await db.execute(
-    sql`SELECT COUNT(*) as total FROM internships WHERE 1=1 ${status && status !== "all" ? sql`AND status = ${status}` : sql``} ${search ? sql`AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})` : sql``}`
+    sql`SELECT COUNT(*) as total FROM internships WHERE ${whereClause}`
   );
 
   const total = parseInt((countResult.rows[0] as any).total, 10);
@@ -86,8 +87,8 @@ export async function action({ request }: Route.ActionArgs) {
   const body = await request.json();
   const { title, company_name, description, requirements, location, duration, stipend, application_deadline, status } = body;
 
-  if (!title || !company_name || !description || !requirements) {
-    return Response.json({ error: "Title, company name, description, and requirements are required" }, { status: 400 });
+  if (!title || !company_name || !description || !requirements || !location || !duration || !stipend) {
+    return Response.json({ error: "Title, company name, description, requirements, location, duration, and stipend are required" }, { status: 400 });
   }
 
   // Generate slug
@@ -115,7 +116,7 @@ export async function action({ request }: Route.ActionArgs) {
         application_deadline, status, slug, created_by
       ) VALUES (
         ${title}, ${company_name}, ${description}, ${requirements},
-        ${location || null}, ${duration || null}, ${stipend || null},
+        ${location}, ${duration}, ${stipend},
         ${application_deadline ? new Date(application_deadline) : null},
         ${status || "draft"}, ${slug}, ${user.id}
       ) RETURNING *

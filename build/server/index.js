@@ -1,13 +1,14 @@
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { ServerRouter, UNSAFE_withComponentProps, Outlet, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, Meta, Links, ScrollRestoration, Scripts, useNavigate, Link, useSearchParams, useParams, useLoaderData } from "react-router";
+import { ServerRouter, UNSAFE_withComponentProps, Outlet, UNSAFE_withErrorBoundaryProps, isRouteErrorResponse, Meta, Links, ScrollRestoration, Scripts, useNavigate, useLocation, Link, useSearchParams, useParams, useLoaderData } from "react-router";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
 import { Toaster, toast } from "sonner";
 import { useState, useRef, useEffect } from "react";
 import { lastLoginMethodClient, jwtClient, adminClient, phoneNumberClient, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { FiHome, FiBook, FiBriefcase, FiBold, FiItalic, FiUnderline, FiMinus, FiCode, FiList, FiType, FiMessageSquare, FiAlignLeft, FiAlignCenter, FiAlignRight, FiLink, FiUpload, FiImage, FiEdit2, FiX, FiCopy, FiDownload } from "react-icons/fi";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -18,7 +19,6 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
-import { FiBold, FiItalic, FiUnderline, FiMinus, FiCode, FiList, FiType, FiMessageSquare, FiAlignLeft, FiAlignCenter, FiAlignRight, FiLink, FiUpload, FiImage, FiEdit2, FiX, FiCopy } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -298,6 +298,53 @@ function useOpsGuard() {
   }, [session, isPending, navigate]);
   return { isAuthorized, isPending };
 }
+function DashboardLayout({ children }) {
+  const location = useLocation();
+  const { data: session } = authClient.useSession();
+  const navigation = [
+    { name: "Dashboard", href: "/", icon: FiHome },
+    { name: "Blog", href: "/", icon: FiBook },
+    { name: "Internships", href: "/internships", icon: FiBriefcase }
+  ];
+  const isActive = (href) => {
+    if (href === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(href);
+  };
+  return /* @__PURE__ */ jsxs("div", { className: "min-h-screen bg-gray-50", children: [
+    /* @__PURE__ */ jsx("div", { className: "fixed inset-y-0 left-0 w-64 bg-white border-r-2 border-neutral-900", children: /* @__PURE__ */ jsxs("div", { className: "flex flex-col h-full", children: [
+      /* @__PURE__ */ jsxs("div", { className: "p-6 border-b-2 border-neutral-900", children: [
+        /* @__PURE__ */ jsx("h1", { className: "font-['Clash_Display'] text-2xl font-bold text-neutral-900", children: "Maverick" }),
+        /* @__PURE__ */ jsx("p", { className: "mt-1 font-['Satoshi'] text-sm text-gray-600", children: "Ops Dashboard" })
+      ] }),
+      /* @__PURE__ */ jsx("nav", { className: "flex-1 p-4 space-y-2", children: navigation.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(item.href);
+        return /* @__PURE__ */ jsxs(
+          Link,
+          {
+            to: item.href,
+            className: `flex items-center gap-3 px-4 py-3 rounded-lg font-['Satoshi'] font-medium transition-colors ${active ? "bg-violet-100 text-violet-700 border-2 border-violet-300" : "text-gray-700 hover:bg-gray-100"}`,
+            children: [
+              /* @__PURE__ */ jsx(Icon, { className: "w-5 h-5" }),
+              item.name
+            ]
+          },
+          item.name
+        );
+      }) }),
+      /* @__PURE__ */ jsx("div", { className: "p-4 border-t-2 border-neutral-900", children: /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
+        /* @__PURE__ */ jsx("div", { className: "w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center", children: /* @__PURE__ */ jsx("span", { className: "font-['Satoshi'] font-bold text-violet-700", children: session?.user?.name?.charAt(0).toUpperCase() || "U" }) }),
+        /* @__PURE__ */ jsxs("div", { className: "flex-1 min-w-0", children: [
+          /* @__PURE__ */ jsx("p", { className: "font-['Satoshi'] font-medium text-neutral-900 truncate", children: session?.user?.name || "User" }),
+          /* @__PURE__ */ jsx("p", { className: "font-['Satoshi'] text-xs text-gray-600 truncate", children: session?.user?.email || "" })
+        ] })
+      ] }) })
+    ] }) }),
+    /* @__PURE__ */ jsx("div", { className: "pl-64", children: /* @__PURE__ */ jsx("main", { className: "p-8", children }) })
+  ] });
+}
 function meta$7({}) {
   return [{
     title: "Maverick – Blog Editor"
@@ -401,8 +448,7 @@ const index$1 = UNSAFE_withComponentProps(function BlogList() {
   if (!isAuthorized) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-gray-50 p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-7xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -1741,8 +1787,7 @@ const _new$1 = UNSAFE_withComponentProps(function NewBlogPost() {
   if (!isAuthorized) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-gray-50 p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-4xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -1862,8 +1907,7 @@ const $id$1 = UNSAFE_withComponentProps(function EditBlogPost() {
     return null;
   }
   if (!post) {
-    return /* @__PURE__ */ jsx("div", {
-      className: "min-h-screen bg-gray-50 p-8",
+    return /* @__PURE__ */ jsx(DashboardLayout, {
       children: /* @__PURE__ */ jsx("div", {
         className: "mx-auto max-w-4xl",
         children: /* @__PURE__ */ jsx("p", {
@@ -1873,8 +1917,7 @@ const $id$1 = UNSAFE_withComponentProps(function EditBlogPost() {
       })
     });
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-gray-50 p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-4xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -1986,7 +2029,7 @@ async function verifyToken(token) {
     return null;
   }
 }
-async function loader$8({
+async function loader$9({
   request
 }) {
   const authHeader = request.headers.get("Authorization");
@@ -2037,7 +2080,7 @@ async function loader$8({
 }
 const route5 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  loader: loader$8
+  loader: loader$9
 }, Symbol.toStringTag, { value: "Module" }));
 async function getUserIdFromToken(token) {
   return verifyToken(token);
@@ -2258,7 +2301,7 @@ const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   __proto__: null,
   action: action$6
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$7({
+async function loader$8({
   request,
   params
 }) {
@@ -2468,9 +2511,9 @@ async function action$5({
 const route7 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$5,
-  loader: loader$7
+  loader: loader$8
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$6({
+async function loader$7({
   request
 }) {
   const user = await getUserFromRequest(request);
@@ -2616,13 +2659,13 @@ async function action$4({
 const route8 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$4,
-  loader: loader$6
+  loader: loader$7
 }, Symbol.toStringTag, { value: "Module" }));
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME || "";
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY || "";
 const useLocalStack = process.env.USE_LOCALSTACK === "true";
 const localStackEndpoint = process.env.LOCALSTACK_ENDPOINT || "http://localhost:4566";
-async function loader$5({
+async function loader$6({
   params
 }) {
   let path = params["*"];
@@ -2707,7 +2750,7 @@ async function loader$5({
 }
 const route9 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  loader: loader$5
+  loader: loader$6
 }, Symbol.toStringTag, { value: "Module" }));
 function meta$3({}) {
   return [{
@@ -2807,8 +2850,7 @@ const index = UNSAFE_withComponentProps(function InternshipsList() {
   if (!isAuthorized) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-white p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-7xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -3216,8 +3258,7 @@ const _new = UNSAFE_withComponentProps(function NewInternship() {
   if (!isAuthorized) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-gray-50 p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-4xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -3252,7 +3293,7 @@ function meta$1({}) {
     content: "Edit internship listing"
   }];
 }
-async function loader$4({
+async function loader$5({
   params,
   request
 }) {
@@ -3339,8 +3380,7 @@ const $id = UNSAFE_withComponentProps(function EditInternship({
   if (!isAuthorized || !internship) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-gray-50 p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-4xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -3378,7 +3418,7 @@ const $id = UNSAFE_withComponentProps(function EditInternship({
 const route12 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: $id,
-  loader: loader$4,
+  loader: loader$5,
   meta: meta$1
 }, Symbol.toStringTag, { value: "Module" }));
 function ForwardModal({
@@ -3560,7 +3600,7 @@ function meta({}) {
     content: "Review internship applications"
   }];
 }
-async function loader$3({
+async function loader$4({
   params,
   request
 }) {
@@ -3672,6 +3712,36 @@ const applications = UNSAFE_withComponentProps(function ApplicationsList({
     }
     setShowForwardModal(true);
   };
+  const handleDownloadResume = async (applicationId, resumeName) => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch(`/api/internships/applications/${applicationId}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error("Failed to download resume");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${resumeName || "resume"}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("Resume downloaded");
+    } catch (error) {
+      console.error("Error downloading resume:", error);
+      toast.error("Failed to download resume");
+    }
+  };
   if (isPending) {
     return /* @__PURE__ */ jsx("div", {
       className: "flex min-h-screen items-center justify-center",
@@ -3684,8 +3754,7 @@ const applications = UNSAFE_withComponentProps(function ApplicationsList({
   if (!isAuthorized || !internship) {
     return null;
   }
-  return /* @__PURE__ */ jsx("div", {
-    className: "min-h-screen bg-white p-8",
+  return /* @__PURE__ */ jsx(DashboardLayout, {
     children: /* @__PURE__ */ jsxs("div", {
       className: "mx-auto max-w-7xl",
       children: [/* @__PURE__ */ jsxs("div", {
@@ -3800,7 +3869,19 @@ const applications = UNSAFE_withComponentProps(function ApplicationsList({
                 children: app.user_email || "N/A"
               }), /* @__PURE__ */ jsx("td", {
                 className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
-                children: app.resume_name || "N/A"
+                children: /* @__PURE__ */ jsxs("div", {
+                  className: "flex items-center gap-2",
+                  children: [/* @__PURE__ */ jsx("span", {
+                    children: app.resume_name || "N/A"
+                  }), /* @__PURE__ */ jsx("button", {
+                    onClick: () => handleDownloadResume(app.id, app.resume_name),
+                    className: "rounded border border-neutral-900 bg-white px-2 py-1 text-sm font-['Satoshi'] hover:bg-gray-50 flex items-center gap-1",
+                    title: "Download Resume",
+                    children: /* @__PURE__ */ jsx(FiDownload, {
+                      className: "w-4 h-4"
+                    })
+                  })]
+                })
               }), /* @__PURE__ */ jsx("td", {
                 className: "border-2 border-neutral-900 px-4 py-2 font-['Satoshi']",
                 children: new Date(app.created_at).toLocaleDateString()
@@ -3856,10 +3937,10 @@ const applications = UNSAFE_withComponentProps(function ApplicationsList({
 const route13 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: applications,
-  loader: loader$3,
+  loader: loader$4,
   meta
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$2({
+async function loader$3({
   request
 }) {
   const user = await getUserFromRequest(request);
@@ -3892,16 +3973,16 @@ async function loader$2({
   const status = url.searchParams.get("status");
   const search = url.searchParams.get("search");
   const offset = (page - 1) * limit;
-  let query = sql`SELECT * FROM internships WHERE 1=1`;
+  let whereClause = sql`1=1`;
   if (status && status !== "all") {
-    query = sql`${query} AND status = ${status}`;
+    whereClause = sql`${whereClause} AND status = ${status}`;
   }
   if (search) {
-    query = sql`${query} AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})`;
+    const searchPattern = `%${search}%`;
+    whereClause = sql`${whereClause} AND (title ILIKE ${searchPattern} OR company_name ILIKE ${searchPattern})`;
   }
-  query = sql`${query} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-  const internships = await db.execute(query);
-  const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM internships WHERE 1=1 ${status && status !== "all" ? sql`AND status = ${status}` : sql``} ${search ? sql`AND (title ILIKE ${`%${search}%`} OR company_name ILIKE ${`%${search}%`})` : sql``}`);
+  const internships = await db.execute(sql`SELECT * FROM internships WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`);
+  const countResult = await db.execute(sql`SELECT COUNT(*) as total FROM internships WHERE ${whereClause}`);
   const total = parseInt(countResult.rows[0].total, 10);
   return Response.json({
     internships: internships.rows,
@@ -3950,9 +4031,9 @@ async function action$3({
     application_deadline,
     status
   } = body;
-  if (!title || !company_name || !description || !requirements) {
+  if (!title || !company_name || !description || !requirements || !location || !duration || !stipend) {
     return Response.json({
-      error: "Title, company name, description, and requirements are required"
+      error: "Title, company name, description, requirements, location, duration, and stipend are required"
     }, {
       status: 400
     });
@@ -3977,7 +4058,7 @@ async function action$3({
         application_deadline, status, slug, created_by
       ) VALUES (
         ${title}, ${company_name}, ${description}, ${requirements},
-        ${location || null}, ${duration || null}, ${stipend || null},
+        ${location}, ${duration}, ${stipend},
         ${application_deadline ? new Date(application_deadline) : null},
         ${status || "draft"}, ${slug}, ${user.id}
       ) RETURNING *
@@ -3991,9 +4072,9 @@ async function action$3({
 const route14 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$3,
-  loader: loader$2
+  loader: loader$3
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader$1({
+async function loader$2({
   params,
   request
 }) {
@@ -4135,9 +4216,9 @@ async function action$2({
 const route15 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$2,
-  loader: loader$1
+  loader: loader$2
 }, Symbol.toStringTag, { value: "Module" }));
-async function loader({
+async function loader$1({
   params,
   request
 }) {
@@ -4201,7 +4282,7 @@ async function loader({
 }
 const route16 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  loader
+  loader: loader$1
 }, Symbol.toStringTag, { value: "Module" }));
 async function action$1({
   params,
@@ -4277,6 +4358,73 @@ async function action$1({
 const route17 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action: action$1
+}, Symbol.toStringTag, { value: "Module" }));
+async function loader({
+  params,
+  request
+}) {
+  const user = await getUserFromRequest(request);
+  if (!user) {
+    return Response.json({
+      error: "Unauthorized"
+    }, {
+      status: 401
+    });
+  }
+  const roleResult = await db.execute(sql`SELECT role FROM "user" WHERE id = ${user.id} LIMIT 1`);
+  if (roleResult.rows.length === 0) {
+    return Response.json({
+      error: "User not found"
+    }, {
+      status: 404
+    });
+  }
+  const role = roleResult.rows[0].role;
+  if (role !== "ops" && role !== "admin") {
+    return Response.json({
+      error: "Forbidden - Ops or Admin access required"
+    }, {
+      status: 403
+    });
+  }
+  const {
+    id: applicationId
+  } = params;
+  const applicationResult = await db.execute(sql`
+      SELECT 
+        ia.resume_snapshot,
+        ia.resume_id,
+        r.name as resume_name,
+        u.name as user_name
+      FROM internship_applications ia
+      JOIN resumes r ON ia.resume_id = r.id
+      JOIN "user" u ON ia.user_id = u.id
+      WHERE ia.id = ${applicationId}
+      LIMIT 1
+    `);
+  if (applicationResult.rows.length === 0) {
+    return Response.json({
+      error: "Application not found"
+    }, {
+      status: 404
+    });
+  }
+  const app = applicationResult.rows[0];
+  const resumeSnapshot = app.resume_snapshot;
+  const resumeName = app.resume_name || "resume";
+  const userName = app.user_name || "student";
+  const jsonContent = JSON.stringify(resumeSnapshot, null, 2);
+  const filename = `${userName}-${resumeName}-${applicationId}.json`;
+  return new Response(jsonContent, {
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Disposition": `attachment; filename="${filename}"`
+    }
+  });
+}
+const route18 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  loader
 }, Symbol.toStringTag, { value: "Module" }));
 async function action({
   request
@@ -4360,11 +4508,11 @@ async function action({
     company_token: tokenResult.rows[0]
   });
 }
-const route18 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const route19 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   action
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-DeUk2TeK.js", "imports": ["/assets/index-CzXbQU2w.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-CbrLjEoF.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/index-BeVtLth0.js"], "css": ["/assets/root-ClI7gOhI.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/index": { "id": "routes/index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-MIJGsi2N.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "login", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-DXpNuf0R.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/new": { "id": "routes/blog/new", "parentId": "root", "path": "blog/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-kyP-2Fch.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/blog-form-BoEfK4dh.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/$id": { "id": "routes/blog/$id", "parentId": "root", "path": "blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-pqfnNvyD.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/blog-form-BoEfK4dh.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.check-role": { "id": "routes/api.auth.check-role", "parentId": "root", "path": "api/auth/check-role", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.check-role-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/upload-image": { "id": "routes/api/blog/upload-image", "parentId": "root", "path": "api/blog/upload-image", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/upload-image-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/$id": { "id": "routes/api/blog/$id", "parentId": "root", "path": "api/blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/route": { "id": "routes/api/blog/route", "parentId": "root", "path": "api/blog", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/images/$": { "id": "routes/api/images/$", "parentId": "root", "path": "api/images/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/index": { "id": "routes/internships/index", "parentId": "root", "path": "internships", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-DGtI7hZ_.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/new": { "id": "routes/internships/new", "parentId": "root", "path": "internships/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-f2xa0FJf.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/internship-form-BJrV4QNS.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id": { "id": "routes/internships/$id", "parentId": "root", "path": "internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-7VU9AQ4J.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/internship-form-BJrV4QNS.js", "/assets/tiptap-editor-wLRlEDPi.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id/applications": { "id": "routes/internships/$id/applications", "parentId": "root", "path": "internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-C6C0hgi_.js", "imports": ["/assets/index-CzXbQU2w.js", "/assets/ops-guard-Dct_8u2F.js", "/assets/api-CEn9LbIw.js", "/assets/index-BeVtLth0.js", "/assets/index-C5DBYTNM.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/route": { "id": "routes/api/internships/route", "parentId": "root", "path": "api/internships", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id": { "id": "routes/api/internships/$id", "parentId": "root", "path": "api/internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id/applications": { "id": "routes/api/internships/$id/applications", "parentId": "root", "path": "api/internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/$id": { "id": "routes/api/internships/applications/$id", "parentId": "root", "path": "api/internships/applications/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-K6Dvbx-E.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/forward": { "id": "routes/api/internships/applications/forward", "parentId": "root", "path": "api/internships/applications/forward", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forward-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-698120b4.js", "version": "698120b4", "sri": void 0 };
+const serverManifest = { "entry": { "module": "/assets/entry.client-vCIVag4f.js", "imports": ["/assets/index-B1xwEu6H.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-DSncUvY1.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/index-DAdZMd0K.js"], "css": ["/assets/root-ChyIpqX6.css"], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/index": { "id": "routes/index", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-C75h6kbL.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/login": { "id": "routes/login", "parentId": "root", "path": "login", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/login-BTSpGz1k.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/new": { "id": "routes/blog/new", "parentId": "root", "path": "blog/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-s89sK1Fo.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js", "/assets/blog-form-B3ssdXJ7.js", "/assets/tiptap-editor-C6Eu22uK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/blog/$id": { "id": "routes/blog/$id", "parentId": "root", "path": "blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-BHJ_3RBy.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js", "/assets/blog-form-B3ssdXJ7.js", "/assets/tiptap-editor-C6Eu22uK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api.auth.check-role": { "id": "routes/api.auth.check-role", "parentId": "root", "path": "api/auth/check-role", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/api.auth.check-role-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/upload-image": { "id": "routes/api/blog/upload-image", "parentId": "root", "path": "api/blog/upload-image", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/upload-image-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/$id": { "id": "routes/api/blog/$id", "parentId": "root", "path": "api/blog/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/blog/route": { "id": "routes/api/blog/route", "parentId": "root", "path": "api/blog", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/images/$": { "id": "routes/api/images/$", "parentId": "root", "path": "api/images/*", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/index": { "id": "routes/internships/index", "parentId": "root", "path": "internships", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/index-B6sbgZAh.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/new": { "id": "routes/internships/new", "parentId": "root", "path": "internships/new", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/new-C4GHp51b.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js", "/assets/internship-form-B4xjKPCN.js", "/assets/tiptap-editor-C6Eu22uK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id": { "id": "routes/internships/$id", "parentId": "root", "path": "internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-XCmK3k-u.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js", "/assets/internship-form-B4xjKPCN.js", "/assets/tiptap-editor-C6Eu22uK.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/internships/$id/applications": { "id": "routes/internships/$id/applications", "parentId": "root", "path": "internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-BKmAhIvy.js", "imports": ["/assets/index-B1xwEu6H.js", "/assets/layout-QfacyZdK.js", "/assets/api-HzdKspp4.js", "/assets/index-DAdZMd0K.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/route": { "id": "routes/api/internships/route", "parentId": "root", "path": "api/internships", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/route-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id": { "id": "routes/api/internships/$id", "parentId": "root", "path": "api/internships/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-DP2rzg_V.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/$id/applications": { "id": "routes/api/internships/$id/applications", "parentId": "root", "path": "api/internships/:id/applications", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/applications-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/$id": { "id": "routes/api/internships/applications/$id", "parentId": "root", "path": "api/internships/applications/:id", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/_id-K6Dvbx-E.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/$id/download": { "id": "routes/api/internships/applications/$id/download", "parentId": "root", "path": "api/internships/applications/:id/download", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/download-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "routes/api/internships/applications/forward": { "id": "routes/api/internships/applications/forward", "parentId": "root", "path": "api/internships/applications/forward", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/forward-l0sNRNKZ.js", "imports": [], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-ef3eb04b.js", "version": "ef3eb04b", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "unstable_optimizeDeps": false, "unstable_subResourceIntegrity": false, "unstable_trailingSlashAwareDataRequests": false, "v8_middleware": false, "v8_splitRouteModules": false, "v8_viteEnvironmentApi": false };
@@ -4519,13 +4667,21 @@ const routes = {
     caseSensitive: void 0,
     module: route17
   },
+  "routes/api/internships/applications/$id/download": {
+    id: "routes/api/internships/applications/$id/download",
+    parentId: "root",
+    path: "api/internships/applications/:id/download",
+    index: void 0,
+    caseSensitive: void 0,
+    module: route18
+  },
   "routes/api/internships/applications/forward": {
     id: "routes/api/internships/applications/forward",
     parentId: "root",
     path: "api/internships/applications/forward",
     index: void 0,
     caseSensitive: void 0,
-    module: route18
+    module: route19
   }
 };
 const allowedActionOrigins = false;
