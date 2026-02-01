@@ -59,17 +59,21 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
   }
 
   // If no Authorization header, try to get token from cookies via frontend
-  const frontendUrl = process.env.VITE_AUTH_URL || "http://localhost:3000";
+  const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.pro";
   const cookies = request.headers.get("Cookie");
   
   if (cookies) {
     try {
+      // Forward all cookies to frontend
       const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
         method: "GET",
         headers: {
           "Cookie": cookies,
           "Content-Type": "application/json",
+          "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0",
         },
+        // Important: don't follow redirects
+        redirect: "manual",
       });
 
       if (response.ok) {
@@ -80,12 +84,23 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
             return getUserInfo(userId);
           }
         }
+      } else {
+        // Log the error for debugging
+        if (process.env.NODE_ENV === "development") {
+          console.debug(`Failed to get token from frontend: ${response.status} ${response.statusText}`);
+          const text = await response.text().catch(() => "");
+          console.debug("Response:", text.substring(0, 200));
+        }
       }
     } catch (error) {
-      // Silently fail and return null
+      // Log error for debugging
       if (process.env.NODE_ENV === "development") {
         console.debug("Failed to get token from frontend:", error);
       }
+    }
+  } else {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("No cookies found in request");
     }
   }
 

@@ -2117,7 +2117,7 @@ async function getUserFromRequest(request) {
       return getUserInfo(userId);
     }
   }
-  const frontendUrl = process.env.VITE_AUTH_URL || "http://localhost:3000";
+  const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.pro";
   const cookies = request.headers.get("Cookie");
   if (cookies) {
     try {
@@ -2125,8 +2125,11 @@ async function getUserFromRequest(request) {
         method: "GET",
         headers: {
           "Cookie": cookies,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+          "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0"
+        },
+        // Important: don't follow redirects
+        redirect: "manual"
       });
       if (response.ok) {
         const data = await response.json();
@@ -2136,11 +2139,21 @@ async function getUserFromRequest(request) {
             return getUserInfo(userId);
           }
         }
+      } else {
+        if (process.env.NODE_ENV === "development") {
+          console.debug(`Failed to get token from frontend: ${response.status} ${response.statusText}`);
+          const text = await response.text().catch(() => "");
+          console.debug("Response:", text.substring(0, 200));
+        }
       }
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
         console.debug("Failed to get token from frontend:", error);
       }
+    }
+  } else {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("No cookies found in request");
     }
   }
   return null;
