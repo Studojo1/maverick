@@ -32,7 +32,7 @@ export async function action({ params, request }: Route.ActionArgs) {
     return Response.json({ error: "Status is required" }, { status: 400 });
   }
 
-  const validStatuses = ["pending", "shortlisted", "rejected", "forwarded", "accepted", "interview_scheduled", "more_info_requested"];
+  const validStatuses = ["pending", "shortlisted", "rejected", "accepted", "interview_scheduled", "more_info_requested"];
   if (!validStatuses.includes(status)) {
     return Response.json({ error: "Invalid status" }, { status: 400 });
   }

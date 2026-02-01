@@ -51,7 +51,55 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const resumeName = app.resume_name || "resume";
   const userName = app.user_name || "student";
 
-  // Return as JSON download
+  // Try to generate PDF using resume service
+  const resumeServiceUrl = process.env.RESUME_SERVICE_URL || "http://resume-service:8086";
+  
+  try {
+    // Add timeout to fetch (30 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    const pdfResponse = await fetch(`${resumeServiceUrl}/make-resume`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resumeSnapshot),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (pdfResponse.ok) {
+      const contentType = pdfResponse.headers.get("content-type");
+      if (contentType?.includes("application/pdf")) {
+        const pdfBytes = await pdfResponse.arrayBuffer();
+        const filename = `${userName}-${resumeName}-${applicationId}.pdf`.replace(/[^a-zA-Z0-9.-]/g, "_");
+
+        return new Response(pdfBytes, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+          },
+        });
+      } else {
+        // Service returned non-PDF, log and fall back
+        const errorText = await pdfResponse.text();
+        console.error(`Resume service returned non-PDF content (${contentType}): ${errorText.substring(0, 200)}`);
+      }
+    } else {
+      // If PDF generation fails, log and fall back to JSON
+      const errorText = await pdfResponse.text();
+      console.error(`Resume service returned ${pdfResponse.status}: ${errorText.substring(0, 200)}`);
+    }
+  } catch (error: any) {
+    // If service is unavailable or times out, fall back to JSON
+    if (error.name === "AbortError") {
+      console.error("Resume service request timed out after 30 seconds");
+    } else {
+      console.error("Failed to generate PDF from resume service:", error.message || error);
+    }
+  }
+
+  // Fallback: Return as JSON download if PDF generation fails
   const jsonContent = JSON.stringify(resumeSnapshot, null, 2);
   const filename = `${userName}-${resumeName}-${applicationId}.json`;
 

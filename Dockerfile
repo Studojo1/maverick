@@ -4,22 +4,16 @@
 FROM oven/bun:1 AS production-dependencies-env
 WORKDIR /src
 COPY package.json ./
-# Copy bun.lockb if it exists (preferred), otherwise package-lock.json
-COPY bun.lockb* ./
-# Install production dependencies
-# If bun.lockb exists, use it; otherwise bun will create it from package.json
-RUN if [ -f bun.lockb ]; then bun install --frozen-lockfile --production; else bun install --production; fi || npm install --production
+# Install production dependencies (bun will generate lockfile if needed)
+RUN bun install --production || npm install --production
 
 FROM oven/bun:1 AS build-env
 WORKDIR /src
 ARG VITE_AUTH_URL=http://localhost:3000
 ENV VITE_AUTH_URL=${VITE_AUTH_URL}
 COPY package.json ./
-# Copy bun.lockb if it exists (preferred), otherwise package-lock.json
-COPY bun.lockb* ./
-# Install all dependencies
-# If bun.lockb exists, use it; otherwise bun will create it from package.json
-RUN if [ -f bun.lockb ]; then bun install --frozen-lockfile; else bun install; fi || npm install
+# Install all dependencies (bun will generate lockfile if needed)
+RUN bun install || npm install
 COPY . .
 RUN bun run build || npm run build
 

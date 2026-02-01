@@ -3,9 +3,9 @@ import { useLoaderData, useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
-import { ForwardModal } from "~/components/internship/forward-modal";
 import { DashboardLayout } from "~/components/dashboard/layout";
-import { FiDownload } from "react-icons/fi";
+import { ResumeViewer } from "~/components/internship/resume-viewer";
+import { FiDownload, FiEye } from "react-icons/fi";
 import type { Route } from "./+types/$id.applications";
 
 export function meta({}: Route.MetaArgs) {
@@ -64,6 +64,7 @@ interface Application {
   created_at: string;
   user_name?: string;
   user_email?: string;
+  user_phone?: string | null;
   resume_name?: string;
 }
 
@@ -75,8 +76,11 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
-  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [viewingResume, setViewingResume] = useState<{
+    applicationId: string;
+    resumeName: string;
+    userName: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isAuthorized && internship) {
@@ -149,15 +153,11 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     }
   };
 
-  const handleForward = () => {
-    if (selectedApplications.length === 0) {
-      toast.error("Please select at least one application to forward");
-      return;
-    }
-    setShowForwardModal(true);
+  const handleViewResume = (applicationId: string, resumeName: string, userName: string) => {
+    setViewingResume({ applicationId, resumeName, userName });
   };
 
-  const handleDownloadResume = async (applicationId: string, resumeName: string) => {
+  const handleDownloadResume = async (applicationId: string, resumeName: string, userName: string) => {
     try {
       const token = await getToken();
       if (!token) {
@@ -179,7 +179,12 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${resumeName || "resume"}.json`;
+      
+      // Determine filename based on content type
+      const contentType = response.headers.get("content-type");
+      const extension = contentType?.includes("application/pdf") ? "pdf" : "json";
+      a.download = `${userName}-${resumeName}-${applicationId}.${extension}`.replace(/[^a-zA-Z0-9.-]/g, "_");
+      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -221,7 +226,7 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
           </p>
         </div>
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -231,18 +236,8 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
             <option value="pending">Pending</option>
             <option value="shortlisted">Shortlisted</option>
             <option value="rejected">Rejected</option>
-            <option value="forwarded">Forwarded</option>
             <option value="accepted">Accepted</option>
           </select>
-
-          {selectedApplications.length > 0 && (
-            <button
-              onClick={handleForward}
-              className="rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-2 font-['Satoshi'] font-medium text-white transition-colors hover:bg-violet-700"
-            >
-              Forward Selected ({selectedApplications.length})
-            </button>
-          )}
         </div>
 
         {loading ? (
@@ -255,23 +250,13 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
               <thead>
                 <tr className="bg-neutral-100">
                   <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
-                    <input
-                      type="checkbox"
-                      checked={selectedApplications.length === applications.length && applications.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedApplications(applications.map((app) => app.id));
-                        } else {
-                          setSelectedApplications([]);
-                        }
-                      }}
-                    />
-                  </th>
-                  <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                     Student
                   </th>
                   <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                     Email
+                  </th>
+                  <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
+                    Phone
                   </th>
                   <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                     Resume
@@ -290,19 +275,6 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
               <tbody>
                 {applications.map((app) => (
                   <tr key={app.id}>
-                    <td className="border-2 border-neutral-900 px-4 py-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedApplications.includes(app.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedApplications([...selectedApplications, app.id]);
-                          } else {
-                            setSelectedApplications(selectedApplications.filter((id) => id !== app.id));
-                          }
-                        }}
-                      />
-                    </td>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       {app.user_name || "N/A"}
                     </td>
@@ -310,15 +282,27 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                       {app.user_email || "N/A"}
                     </td>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                      {app.user_phone || "N/A"}
+                    </td>
+                    <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       <div className="flex items-center gap-2">
                         <span>{app.resume_name || "N/A"}</span>
-                        <button
-                          onClick={() => handleDownloadResume(app.id, app.resume_name)}
-                          className="rounded border border-neutral-900 bg-white px-2 py-1 text-sm font-['Satoshi'] hover:bg-gray-50 flex items-center gap-1"
-                          title="Download Resume"
-                        >
-                          <FiDownload className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleViewResume(app.id, app.resume_name || "Resume", app.user_name || "Student")}
+                            className="rounded border border-neutral-900 bg-white px-2 py-1 text-sm font-['Satoshi'] hover:bg-gray-50 flex items-center gap-1"
+                            title="View Resume"
+                          >
+                            <FiEye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadResume(app.id, app.resume_name || "resume", app.user_name || "student")}
+                            className="rounded border border-neutral-900 bg-white px-2 py-1 text-sm font-['Satoshi'] hover:bg-gray-50 flex items-center gap-1"
+                            title="Download Resume"
+                          >
+                            <FiDownload className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </td>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
@@ -333,8 +317,6 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                             ? "bg-blue-100 text-blue-700"
                             : app.status === "rejected"
                             ? "bg-red-100 text-red-700"
-                            : app.status === "forwarded"
-                            ? "bg-purple-100 text-purple-700"
                             : "bg-gray-100 text-gray-700"
                         }`}
                       >
@@ -350,7 +332,6 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                         <option value="pending">Pending</option>
                         <option value="shortlisted">Shortlist</option>
                         <option value="rejected">Reject</option>
-                        <option value="forwarded">Forward</option>
                         <option value="accepted">Accept</option>
                       </select>
                     </td>
@@ -361,19 +342,12 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
           </div>
         )}
 
-        {showForwardModal && (
-          <ForwardModal
-            internshipId={internship.id}
-            applicationIds={selectedApplications}
-            onClose={() => {
-              setShowForwardModal(false);
-              setSelectedApplications([]);
-            }}
-            onSuccess={() => {
-              setShowForwardModal(false);
-              setSelectedApplications([]);
-              loadApplications();
-            }}
+        {viewingResume && (
+          <ResumeViewer
+            applicationId={viewingResume.applicationId}
+            resumeName={viewingResume.resumeName}
+            userName={viewingResume.userName}
+            onClose={() => setViewingResume(null)}
           />
         )}
       </div>

@@ -33,6 +33,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       ia.*,
       u.name as user_name,
       u.email as user_email,
+      u.phone_number as user_phone,
       r.name as resume_name
     FROM public.internship_applications ia
     JOIN public."user" u ON ia.user_id = u.id
@@ -57,6 +58,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       created_at: row.created_at,
       user_name: row.user_name,
       user_email: row.user_email,
+      user_phone: row.user_phone,
       resume_name: row.resume_name,
     })),
   });
