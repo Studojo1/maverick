@@ -191,6 +191,9 @@ export default function InternshipsList() {
                 <thead>
                   <tr className="bg-neutral-100">
                     <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
+                      S.No
+                    </th>
+                    <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                       Title
                     </th>
                     <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
@@ -214,64 +217,71 @@ export default function InternshipsList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {internships.map((internship) => (
-                    <tr key={internship.id}>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        <Link
-                          to={`/internships/${internship.id}`}
-                          className="text-violet-600 hover:underline"
-                        >
-                          {internship.title}
-                        </Link>
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        {internship.company_name}
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        <span
-                          className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                            internship.status === "published"
-                              ? "bg-green-100 text-green-700"
-                              : internship.status === "draft"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {internship.status}
-                        </span>
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        {internship.view_count}
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        {internship.click_count}
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        <Link
-                          to={`/internships/${internship.id}/applications`}
-                          className="text-violet-600 hover:underline"
-                        >
-                          {internship.application_count}
-                        </Link>
-                      </td>
-                      <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                        <div className="flex gap-2">
+                  {internships.map((internship, index) => {
+                    const serialNumber = (page - 1) * 10 + index + 1;
+                    return (
+                      <tr key={internship.id}>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          {serialNumber}
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                           <Link
                             to={`/internships/${internship.id}`}
                             className="text-violet-600 hover:underline"
                           >
-                            Edit
+                            {internship.title}
                           </Link>
-                          <button
-                            onClick={() => handleDelete(internship.id)}
-                            className="text-red-600 hover:underline"
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          {internship.company_name}
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          <span
+                            className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                              internship.status === "published"
+                                ? "bg-green-100 text-green-700"
+                                : internship.status === "draft"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
                           >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {internship.status}
+                          </span>
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          {internship.view_count}
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          {internship.click_count}
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          {internship.application_count}
+                        </td>
+                        <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                          <div className="flex gap-2">
+                            <Link
+                              to={`/internships/${internship.id}`}
+                              className="text-violet-600 hover:underline"
+                            >
+                              Edit
+                            </Link>
+                            <Link
+                              to={`/internships/${internship.id}/applications`}
+                              className="text-violet-600 hover:underline"
+                            >
+                              View Applications
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(internship.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
