@@ -38,8 +38,21 @@ export default function NewBlogPost() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create post");
+        let errorMessage = "Failed to create post";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const text = await response.text();
+            errorMessage = text || errorMessage;
+          } catch {
+            // Fallback to status text
+            errorMessage = response.statusText || errorMessage;
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

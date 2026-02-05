@@ -158,8 +158,12 @@ export async function action({ request, params }: Route.ActionArgs) {
         updates.push(`seo_meta_description = ${seo.metaDescription ? `'${escaped}'` : "NULL"}`);
       }
       if (seo.keywords !== undefined) {
-        const keywordsJson = JSON.stringify(seo.keywords).replace(/'/g, "''");
-        updates.push(`seo_keywords = '${keywordsJson}'::jsonb`);
+        if (seo.keywords && seo.keywords.length > 0) {
+          const escapedKeywords = seo.keywords.map((k: string) => `'${k.replace(/'/g, "''")}'`).join(", ");
+          updates.push(`seo_keywords = ARRAY[${escapedKeywords}]`);
+        } else {
+          updates.push(`seo_keywords = NULL`);
+        }
       }
       if (seo.ogImage !== undefined) {
         const escaped = seo.ogImage ? seo.ogImage.replace(/'/g, "''") : "";
@@ -168,13 +172,21 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     if (categories !== undefined) {
-      const categoriesJson = JSON.stringify(categories).replace(/'/g, "''");
-      updates.push(`categories = '${categoriesJson}'::jsonb`);
+      if (categories && categories.length > 0) {
+        const escapedCategories = categories.map((c: string) => `'${c.replace(/'/g, "''")}'`).join(", ");
+        updates.push(`categories = ARRAY[${escapedCategories}]`);
+      } else {
+        updates.push(`categories = NULL`);
+      }
     }
 
     if (tags !== undefined) {
-      const tagsJson = JSON.stringify(tags).replace(/'/g, "''");
-      updates.push(`tags = '${tagsJson}'::jsonb`);
+      if (tags && tags.length > 0) {
+        const escapedTags = tags.map((t: string) => `'${t.replace(/'/g, "''")}'`).join(", ");
+        updates.push(`tags = ARRAY[${escapedTags}]`);
+      } else {
+        updates.push(`tags = NULL`);
+      }
     }
 
     // Always update updated_at
