@@ -12,7 +12,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: FiHome },
-    { name: "Blog", href: "/", icon: FiBook },
+    { name: "Blog", href: "/blog", icon: FiBook },
     { name: "Internships", href: "/internships", icon: FiBriefcase },
     { name: "Companies", href: "/companies", icon: FiBriefcase },
   ];

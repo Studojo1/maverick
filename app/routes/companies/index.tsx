@@ -4,7 +4,7 @@ import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
-import { FiPlus } from "react-icons/fi";
+import { FiPlus, FiTrash2 } from "react-icons/fi";
 import type { Route } from "./+types/index";
 
 export function meta({}: Route.MetaArgs) {
@@ -33,10 +33,15 @@ export default function Companies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthorized) {
-      loadCompanies();
+      const timeoutId = setTimeout(() => {
+        loadCompanies();
+      }, 300); // Debounce search by 300ms
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthorized, search]);
 
@@ -71,6 +76,45 @@ export default function Companies() {
       toast.error("Failed to load companies");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleArchive = async (company: Company) => {
+    if (
+      !window.confirm(
+        `Archive ${company.name}? This hides the company from Maverick, but keeps its history.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setArchivingId(company.id);
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const response = await fetch(`/api/companies/${company.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Failed to archive company");
+      }
+
+      setCompanies((prev) => prev.filter((c) => c.id !== company.id));
+      toast.success("Company archived");
+    } catch (error: any) {
+      console.error("Error archiving company:", error);
+      toast.error(error.message || "Failed to archive company");
+    } finally {
+      setArchivingId(null);
     }
   };
 
@@ -170,12 +214,23 @@ export default function Companies() {
                       )}
                     </td>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                      <Link
-                        to={`/companies/${company.id}`}
-                        className="text-violet-600 hover:underline"
-                      >
-                        Edit
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to={`/companies/${company.id}`}
+                          className="text-violet-600 hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleArchive(company)}
+                          disabled={archivingId === company.id}
+                          className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <FiTrash2 className="h-4 w-4" />
+                          Archive
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
