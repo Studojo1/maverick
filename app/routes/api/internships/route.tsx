@@ -85,7 +85,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const body = await request.json();
-  const { title, company_name, description, requirements, location, duration, stipend, application_deadline, status } = body;
+  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status } = body;
 
   if (!title || !company_name || !description || !requirements || !location || !duration || !stipend) {
     return Response.json({ error: "Title, company name, description, requirements, location, duration, and stipend are required" }, { status: 400 });
@@ -112,10 +112,10 @@ export async function action({ request }: Route.ActionArgs) {
   const result = await db.execute(
     sql`
       INSERT INTO public.internships (
-        title, company_name, description, requirements, location, duration, stipend,
+        title, company_name, company_id, description, requirements, location, duration, stipend,
         application_deadline, status, slug, created_by
       ) VALUES (
-        ${title}, ${company_name}, ${description}, ${requirements},
+        ${title}, ${company_name}, ${company_id || null}, ${description}, ${requirements},
         ${location}, ${duration}, ${stipend},
         ${application_deadline ? new Date(application_deadline) : null},
         ${status || "draft"}, ${slug}, ${user.id}

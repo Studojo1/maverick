@@ -16,9 +16,12 @@ export default [
   route("internships/:id/applications", "routes/internships/$id/applications.tsx"),
   route("api/internships", "routes/api/internships/route.tsx"),
   route("api/internships/:id", "routes/api/internships/$id.tsx"),
+  route("api/companies", "routes/api/companies/route.tsx"),
   route("api/internships/:id/applications", "routes/api/internships/$id/applications.tsx"),
   route("api/internships/applications/:id", "routes/api/internships/applications/$id.tsx"),
   route("api/internships/applications/:id/download", "routes/api/internships/applications/$id/download.tsx"),
   route("api/internships/applications/:id/view", "routes/api/internships/applications/$id/view.tsx"),
+  route("api/internships/applications/forward", "routes/api/internships/applications/forward.tsx"),
+  route("api/companies/:id", "routes/api/companies/$id.tsx"),
 ] satisfies RouteConfig;
 

@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { TipTapEditor } from "../blog/tiptap-editor";
+import { CompanySelector } from "./company-selector";
+import { getToken } from "~/lib/api";
+import { toast } from "sonner";
 
 interface InternshipFormProps {
   initialData?: {
     id?: string;
     title?: string;
     company_name?: string;
+    company_id?: string;
     description?: string;
     requirements?: string;
     location?: string;
@@ -20,6 +24,7 @@ interface InternshipFormProps {
 
 export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFormProps) {
   const [title, setTitle] = useState(initialData?.title || "");
+  const [companyId, setCompanyId] = useState<string | null>(initialData?.company_id || null);
   const [companyName, setCompanyName] = useState(initialData?.company_name || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [requirements, setRequirements] = useState(initialData?.requirements || "");
@@ -36,6 +41,35 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
   );
   const [loading, setLoading] = useState(false);
 
+  const handleCompanyChange = (id: string | null, name: string) => {
+    setCompanyId(id);
+    setCompanyName(name);
+  };
+
+  const handleCreateCompany = async (name: string) => {
+    const token = await getToken();
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+
+    const response = await fetch("/api/companies", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create company");
+    }
+
+    const data = await response.json();
+    return data.company;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -48,6 +82,7 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
     try {
       await onSubmit({
         title: title.trim(),
+        company_id: companyId,
         company_name: companyName.trim(),
         description,
         requirements,
@@ -82,15 +117,12 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
 
       <div>
         <label className="mb-2 block font-['Satoshi'] font-medium text-neutral-900">
-          Company Name *
+          Company *
         </label>
-        <input
-          type="text"
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          required
-          className="w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500"
-          placeholder="e.g., Tech Corp"
+        <CompanySelector
+          value={companyId}
+          onChange={handleCompanyChange}
+          onCreateNew={handleCreateCompany}
         />
       </div>
 

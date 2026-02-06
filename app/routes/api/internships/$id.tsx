@@ -73,7 +73,7 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // Handle PUT request
   const body = await request.json();
-  const { title, company_name, description, requirements, location, duration, stipend, application_deadline, status } = body;
+  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status } = body;
 
   // Check if internship exists
   const existingResult = await db.execute(
@@ -112,6 +112,7 @@ export async function action({ params, request }: Route.ActionArgs) {
       UPDATE public.internships SET
         title = COALESCE(${title || null}, title),
         company_name = COALESCE(${company_name || null}, company_name),
+        company_id = COALESCE(${company_id || null}, company_id),
         description = COALESCE(${description || null}, description),
         requirements = COALESCE(${requirements || null}, requirements),
         location = COALESCE(${location || null}, location),

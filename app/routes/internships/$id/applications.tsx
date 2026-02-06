@@ -5,6 +5,7 @@ import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
 import { ResumeViewer } from "~/components/internship/resume-viewer";
+import { ForwardModal } from "~/components/internship/forward-modal";
 import { FiDownload, FiEye } from "react-icons/fi";
 import type { Route } from "./+types/$id.applications";
 
@@ -76,6 +77,8 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
+  const [showForwardModal, setShowForwardModal] = useState(false);
   const [viewingResume, setViewingResume] = useState<{
     applicationId: string;
     resumeName: string;
@@ -157,6 +160,14 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     setViewingResume({ applicationId, resumeName, userName });
   };
 
+  const handleForward = () => {
+    if (selectedApplications.length === 0) {
+      toast.error("Please select at least one application to forward");
+      return;
+    }
+    setShowForwardModal(true);
+  };
+
   const handleDownloadResume = async (applicationId: string, resumeName: string, userName: string) => {
     try {
       const token = await getToken();
@@ -226,7 +237,7 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
           </p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex items-center gap-4">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -238,6 +249,14 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
             <option value="rejected">Rejected</option>
             <option value="accepted">Accepted</option>
           </select>
+          {selectedApplications.length > 0 && (
+            <button
+              onClick={handleForward}
+              className="rounded-lg border-2 border-neutral-900 bg-violet-600 px-4 py-2 font-['Satoshi'] font-bold text-white transition-colors hover:bg-violet-700"
+            >
+              Forward Selected ({selectedApplications.length})
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -249,6 +268,20 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
             <table className="w-full border-2 border-neutral-900">
               <thead>
                 <tr className="bg-neutral-100">
+                  <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
+                    <input
+                      type="checkbox"
+                      checked={selectedApplications.length === applications.length && applications.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedApplications(applications.map((a) => a.id));
+                        } else {
+                          setSelectedApplications([]);
+                        }
+                      }}
+                      className="rounded border-neutral-900"
+                    />
+                  </th>
                   <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                     Student
                   </th>
@@ -275,6 +308,20 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
               <tbody>
                 {applications.map((app) => (
                   <tr key={app.id}>
+                    <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                      <input
+                        type="checkbox"
+                        checked={selectedApplications.includes(app.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedApplications([...selectedApplications, app.id]);
+                          } else {
+                            setSelectedApplications(selectedApplications.filter((id) => id !== app.id));
+                          }
+                        }}
+                        className="rounded border-neutral-900"
+                      />
+                    </td>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       {app.user_name || "N/A"}
                     </td>
@@ -348,6 +395,22 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
             resumeName={viewingResume.resumeName}
             userName={viewingResume.userName}
             onClose={() => setViewingResume(null)}
+          />
+        )}
+
+        {showForwardModal && (
+          <ForwardModal
+            internshipId={internship.id}
+            applicationIds={selectedApplications}
+            onClose={() => {
+              setShowForwardModal(false);
+              setSelectedApplications([]);
+            }}
+            onSuccess={() => {
+              setShowForwardModal(false);
+              setSelectedApplications([]);
+              loadApplications();
+            }}
           />
         )}
       </div>

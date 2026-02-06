@@ -14,6 +14,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Dashboard", href: "/", icon: FiHome },
     { name: "Blog", href: "/", icon: FiBook },
     { name: "Internships", href: "/internships", icon: FiBriefcase },
+    { name: "Companies", href: "/companies", icon: FiBriefcase },
   ];
 
   const isActive = (href: string) => {
