@@ -85,7 +85,7 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const body = await request.json();
-  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status } = body;
+  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status, questions } = body;
 
   if (!title || !company_name || !description || !requirements || !location || !duration || !stipend) {
     return Response.json({ error: "Title, company name, description, requirements, location, duration, and stipend are required" }, { status: 400 });
@@ -124,6 +124,30 @@ export async function action({ request }: Route.ActionArgs) {
   );
 
   const internship = result.rows[0] as any;
+
+  // Insert questions if provided
+  if (questions && Array.isArray(questions) && questions.length > 0) {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (q.question_text && q.question_type) {
+        await db.execute(
+          sql`
+            INSERT INTO public.internship_questions (
+              internship_id, question_text, question_type, options, required, "order", tag_id
+            ) VALUES (
+              ${internship.id},
+              ${q.question_text},
+              ${q.question_type},
+              ${q.options ? JSON.stringify(q.options) : null},
+              ${q.required || false},
+              ${q.order !== undefined ? q.order : i},
+              ${q.tag_id || null}
+            )
+          `
+        );
+      }
+    }
+  }
 
   return Response.json({ success: true, internship });
 }

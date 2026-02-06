@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
 import { ResumeViewer } from "~/components/internship/resume-viewer";
 import { ForwardModal } from "~/components/internship/forward-modal";
-import { FiDownload, FiEye } from "react-icons/fi";
+import { FiDownload, FiEye, FiChevronDown, FiChevronUp } from "react-icons/fi";
 import type { Route } from "./+types/$id.applications";
 
 export function meta({}: Route.MetaArgs) {
@@ -57,6 +57,14 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   return { internship: internshipResult.rows[0] };
 }
 
+interface QuestionResponse {
+  question_id: string;
+  question_text: string;
+  question_type: string;
+  order: number;
+  response: any;
+}
+
 interface Application {
   id: string;
   user_id: string;
@@ -67,6 +75,7 @@ interface Application {
   user_email?: string;
   user_phone?: string | null;
   resume_name?: string;
+  question_responses?: QuestionResponse[];
 }
 
 export default function ApplicationsList({ data }: Route.ComponentProps) {
@@ -84,6 +93,7 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     resumeName: string;
     userName: string;
   } | null>(null);
+  const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isAuthorized && internship) {
@@ -153,6 +163,46 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Failed to update application status");
+    }
+  };
+
+  const formatResponse = (response: any, questionType: string): string => {
+    if (response === null || response === undefined) {
+      return "No response";
+    }
+
+    switch (questionType) {
+      case "multiple_choice":
+      case "yes_no":
+        return String(response);
+      
+      case "checkbox":
+        if (Array.isArray(response)) {
+          return response.join(", ");
+        }
+        return String(response);
+      
+      case "rating":
+      case "number":
+        return String(response);
+      
+      case "date":
+        if (response) {
+          try {
+            return new Date(response).toLocaleDateString();
+          } catch {
+            return String(response);
+          }
+        }
+        return String(response);
+      
+      case "file_upload":
+        return response ? `File: ${response}` : "No file uploaded";
+      
+      case "textarea":
+      case "text":
+      default:
+        return String(response);
     }
   };
 
@@ -303,11 +353,19 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                   <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
                     Actions
                   </th>
+                  <th className="border-2 border-neutral-900 px-4 py-2 text-left font-['Satoshi'] font-bold">
+                    Questions
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {applications.map((app) => (
-                  <tr key={app.id}>
+                {applications.map((app) => {
+                  const isExpanded = expandedApplications.has(app.id);
+                  const hasResponses = app.question_responses && app.question_responses.length > 0;
+                  
+                  return (
+                    <React.Fragment key={app.id}>
+                      <tr>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       <input
                         type="checkbox"
@@ -382,8 +440,63 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                         <option value="accepted">Accept</option>
                       </select>
                     </td>
+                    <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
+                      {hasResponses ? (
+                        <button
+                          onClick={() => {
+                            const newExpanded = new Set(expandedApplications);
+                            if (isExpanded) {
+                              newExpanded.delete(app.id);
+                            } else {
+                              newExpanded.add(app.id);
+                            }
+                            setExpandedApplications(newExpanded);
+                          }}
+                          className="flex items-center gap-2 rounded border border-neutral-900 bg-white px-3 py-1 text-sm font-['Satoshi'] hover:bg-gray-50"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <FiChevronUp className="w-4 h-4" />
+                              Hide ({app.question_responses?.length || 0})
+                            </>
+                          ) : (
+                            <>
+                              <FiChevronDown className="w-4 h-4" />
+                              View ({app.question_responses?.length || 0})
+                            </>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">No responses</span>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  {isExpanded && hasResponses && (
+                    <tr>
+                      <td colSpan={9} className="border-2 border-neutral-900 bg-gray-50 px-4 py-4">
+                        <div className="space-y-4">
+                          <h4 className="font-['Clash_Display'] text-lg font-bold text-neutral-900">
+                            Question Responses
+                          </h4>
+                          <div className="space-y-3">
+                            {app.question_responses?.map((qr, idx) => (
+                              <div key={qr.question_id || idx} className="rounded-lg border-2 border-neutral-900 bg-white p-4">
+                                <div className="mb-2 font-['Satoshi'] font-medium text-neutral-900">
+                                  {qr.question_text || `Question ${idx + 1}`}
+                                </div>
+                                <div className="font-['Satoshi'] text-gray-700">
+                                  {formatResponse(qr.response, qr.question_type)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

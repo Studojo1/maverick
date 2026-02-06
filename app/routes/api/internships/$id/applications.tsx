@@ -49,18 +49,50 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const applications = await db.execute(query);
 
+  // Fetch question responses for each application
+  const applicationsWithResponses = await Promise.all(
+    applications.rows.map(async (row: any) => {
+      // Get question responses for this user and internship
+      const responsesQuery = sql`
+        SELECT 
+          uqr.id,
+          uqr.question_id,
+          uqr.response,
+          iq.question_text,
+          iq.question_type,
+          iq."order"
+        FROM public.user_question_responses uqr
+        JOIN public.internship_questions iq ON uqr.question_id = iq.id
+        WHERE uqr.user_id = ${row.user_id}
+          AND iq.internship_id = ${internshipId}
+        ORDER BY iq."order" ASC
+      `;
+      
+      const responses = await db.execute(responsesQuery);
+      
+      return {
+        id: row.id,
+        user_id: row.user_id,
+        resume_id: row.resume_id,
+        status: row.status,
+        created_at: row.created_at,
+        user_name: row.user_name,
+        user_email: row.user_email,
+        user_phone: row.user_phone,
+        resume_name: row.resume_name,
+        question_responses: responses.rows.map((resp: any) => ({
+          question_id: resp.question_id,
+          question_text: resp.question_text,
+          question_type: resp.question_type,
+          order: resp.order,
+          response: resp.response,
+        })),
+      };
+    })
+  );
+
   return Response.json({
-    applications: applications.rows.map((row: any) => ({
-      id: row.id,
-      user_id: row.user_id,
-      resume_id: row.resume_id,
-      status: row.status,
-      created_at: row.created_at,
-      user_name: row.user_name,
-      user_email: row.user_email,
-      user_phone: row.user_phone,
-      resume_name: row.resume_name,
-    })),
+    applications: applicationsWithResponses,
   });
 }
 

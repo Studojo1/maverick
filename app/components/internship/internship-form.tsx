@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TipTapEditor } from "../blog/tiptap-editor";
 import { CompanySelector } from "./company-selector";
+import { QuestionBuilder, type Question } from "./question-builder";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 
@@ -40,6 +41,7 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
     initialData?.status || "draft"
   );
   const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([]);
 
   const handleCompanyChange = (id: string | null, name: string) => {
     setCompanyId(id);
@@ -91,6 +93,7 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
         stipend: stipend.trim() || undefined,
         application_deadline: applicationDeadline || undefined,
         status,
+        questions: questions.filter((q) => q.question_text.trim() !== ""),
       });
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -217,6 +220,10 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
           <option value="published">Published</option>
           <option value="closed">Closed</option>
         </select>
+      </div>
+
+      <div className="rounded-lg border-2 border-neutral-900 bg-violet-50 p-6">
+        <QuestionBuilder questions={questions} onChange={setQuestions} />
       </div>
 
       <div className="flex gap-4">
