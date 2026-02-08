@@ -37,10 +37,8 @@ export async function uploadBlogImage(
   const client = getBlobServiceClient();
   const containerClient = client.getContainerClient(containerName);
 
-  // Ensure container exists
-  await containerClient.createIfNotExists({
-    access: "private",
-  });
+  // Ensure container exists (defaults to private if access not specified)
+  await containerClient.createIfNotExists();
 
   // Generate unique filename: timestamp-original-filename
   const timestamp = Date.now();
