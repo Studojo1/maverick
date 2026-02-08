@@ -1,90 +1,45 @@
 import type { Route } from "./+types/api.images.$";
-import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
 
-const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME || "";
-const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY || "";
-const useLocalStack = process.env.USE_LOCALSTACK === "true";
-const localStackEndpoint = process.env.LOCALSTACK_ENDPOINT || "http://localhost:4566";
-
-// GET /api/images/* - Serve images from Azure Blob Storage
-export async function loader({ params }: Route.LoaderArgs) {
+// GET /api/images/* - Proxy image requests to frontend app
+export async function loader({ params, request }: Route.LoaderArgs) {
   let path = params["*"];
 
   if (!path) {
     return Response.json({ error: "Image path required" }, { status: 400 });
   }
 
-  // Decode URL-encoded path (e.g., blog-images%2Ffilename.png -> blog-images/filename.png)
-  try {
-    path = decodeURIComponent(path);
-  } catch (e) {
-    // If decoding fails, use original path
-    console.warn("Failed to decode image path:", path);
-  }
+  // Get frontend URL from environment or default
+  const frontendUrl = process.env.VITE_FRONTEND_URL || 
+                      process.env.FRONTEND_URL || 
+                      "https://studojo.com";
+
+  // Build the frontend URL for the image
+  const imageUrl = `${frontendUrl}/api/images/${path}`;
 
   try {
-    let blobServiceClient: BlobServiceClient;
+    // Proxy the request to the frontend app
+    const response = await fetch(imageUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0",
+      },
+    });
 
-    if (useLocalStack) {
-      const connectionString = `DefaultEndpointsProtocol=http;AccountName=${accountName};AccountKey=${accountKey};BlobEndpoint=${localStackEndpoint}/${accountName};`;
-      blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-    } else {
-      if (!accountName || !accountKey) {
-        return Response.json({ error: "Blob storage not configured" }, { status: 500 });
-      }
-      const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
-      const blobServiceUrl = `https://${accountName}.blob.core.windows.net`;
-      blobServiceClient = new BlobServiceClient(blobServiceUrl, sharedKeyCredential);
+    if (!response.ok) {
+      return Response.json(
+        { error: "Image not found" },
+        { status: response.status }
+      );
     }
 
-    // Extract container and blob name from path
-    // Path format: blog-images/filename.jpg
-    // The container is "blog-images" and the blob name is just the filename
-    const parts = path.split("/");
-    let containerName: string;
-    let blobName: string;
-    
-    if (parts[0] === "blog-images" && parts.length > 1) {
-      // Path is blog-images/filename.jpg - container is blog-images, blob is filename.jpg
-      containerName = "blog-images";
-      blobName = parts.slice(1).join("/");
-    } else {
-      // Path is just filename.jpg - assume container is blog-images
-      containerName = "blog-images";
-      blobName = parts.join("/");
-    }
+    // Get the image data
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    const blobClient = containerClient.getBlockBlobClient(blobName);
+    // Get content type from the frontend response
+    const contentType = response.headers.get("Content-Type") || "image/jpeg";
 
-    // Check if blob exists
-    const exists = await blobClient.exists();
-    if (!exists) {
-      return Response.json({ error: "Image not found" }, { status: 404 });
-    }
-
-    // Download blob
-    const downloadResponse = await blobClient.download();
-    if (!downloadResponse.readableStreamBody) {
-      return Response.json({ error: "Failed to download image" }, { status: 500 });
-    }
-
-    // Convert stream to buffer
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of downloadResponse.readableStreamBody) {
-      chunks.push(chunk);
-    }
-    const buffer = Buffer.concat(chunks);
-
-    // Determine content type from blob properties or file extension
-    const contentType =
-      downloadResponse.contentType ||
-      (blobName.endsWith(".png")
-        ? "image/png"
-        : blobName.endsWith(".webp")
-        ? "image/webp"
-        : "image/jpeg");
-
+    // Return the proxied image with appropriate headers
     return new Response(buffer, {
       headers: {
         "Content-Type": contentType,
@@ -92,9 +47,9 @@ export async function loader({ params }: Route.LoaderArgs) {
       },
     });
   } catch (error: any) {
-    console.error("Error serving image:", error);
+    console.error("Error proxying image:", error);
     return Response.json(
-      { error: "Failed to serve image", details: error.message },
+      { error: "Failed to proxy image", details: error.message },
       { status: 500 }
     );
   }
