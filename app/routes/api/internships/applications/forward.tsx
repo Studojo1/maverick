@@ -59,13 +59,16 @@ export async function action({ request }: Route.ActionArgs) {
   // Generate token
   const token = randomBytes(32).toString("hex");
 
-  // Create company token
+  // Create company token - properly handle JSONB casting with escaping
+  const applicationIdsJson = JSON.stringify(application_ids);
+  const applicationIdsValue = sql.raw(`'${applicationIdsJson.replace(/'/g, "''")}'::jsonb`);
+  
   const tokenResult = await db.execute(
     sql`
       INSERT INTO public.company_tokens (
         token, internship_id, application_ids, created_by, expires_at
       ) VALUES (
-        ${token}, ${internship_id}, ${JSON.stringify(application_ids)}::jsonb, ${user.id},
+        ${token}, ${internship_id}, ${applicationIdsValue}, ${user.id},
         ${expires_at ? new Date(expires_at) : null}
       ) RETURNING *
     `

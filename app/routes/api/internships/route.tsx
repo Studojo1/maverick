@@ -87,8 +87,8 @@ export async function action({ request }: Route.ActionArgs) {
   const body = await request.json();
   const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status, questions } = body;
 
-  if (!title || !company_name || !description || !requirements || !location || !duration || !stipend) {
-    return Response.json({ error: "Title, company name, description, requirements, location, duration, and stipend are required" }, { status: 400 });
+  if (!title || !company_name || !description || !requirements) {
+    return Response.json({ error: "Title, company name, description, and requirements are required" }, { status: 400 });
   }
 
   // Generate slug
@@ -114,9 +114,9 @@ export async function action({ request }: Route.ActionArgs) {
       INSERT INTO public.internships (
         title, company_name, company_id, description, requirements, location, duration, stipend,
         application_deadline, status, slug, created_by
-      ) VALUES (
+      )       VALUES (
         ${title}, ${company_name}, ${company_id || null}, ${description}, ${requirements},
-        ${location}, ${duration}, ${stipend},
+        ${location || null}, ${duration || null}, ${stipend || null},
         ${application_deadline ? new Date(application_deadline) : null},
         ${status || "draft"}, ${slug}, ${user.id}
       ) RETURNING *

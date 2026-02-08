@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiUpload, FiX, FiEdit2 } from "react-icons/fi";
 import { motion } from "framer-motion";
+import { getToken } from "~/lib/api";
 
 interface BlogImageUploadProps {
   value?: string;
@@ -42,24 +43,36 @@ export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUp
     setUploading(true);
 
     try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
       const response = await fetch("/api/blog/upload-image", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload image");
+        if (response.status === 401) {
+          throw new Error("Authentication required. Please log in again.");
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to upload image");
       }
 
       const data = await response.json();
       setPreview(data.url);
       onChange?.(data.url);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading image:", error);
-      alert("Failed to upload image");
+      alert(error.message || "Failed to upload image");
     } finally {
       setUploading(false);
     }
