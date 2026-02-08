@@ -10,10 +10,16 @@ import { sql } from "drizzle-orm";
 
 export async function action({ request }: Route.ActionArgs) {
   // Check authentication and ops/admin role
+  const authHeader = request.headers.get("Authorization");
+  console.debug("[upload-image] Authorization header:", authHeader ? "present" : "missing");
+  
   const user = await getUserFromRequest(request);
   if (!user) {
+    console.debug("[upload-image] No user found from request");
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  
+  console.debug("[upload-image] User authenticated:", user.id);
 
   // Check if user has ops or admin role
   const result = await db.execute(
