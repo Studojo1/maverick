@@ -45,17 +45,22 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // Parse form data
+  console.log("[upload-image] Parsing form data...");
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
 
   if (!file) {
+    console.error("[upload-image] No file provided in form data");
     return Response.json({ error: "No file provided" }, { status: 400 });
   }
+
+  console.log(`[upload-image] File received: name=${file.name}, size=${file.size} bytes, type=${file.type}`);
 
   // Validate file type (MIME type check)
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
   const mimeType = file.type || "image/jpeg";
   if (!allowedTypes.includes(mimeType)) {
+    console.error(`[upload-image] Invalid file type: ${mimeType}`);
     return Response.json(
       { error: "Invalid file type. Only JPEG, PNG, and WebP are allowed." },
       { status: 400 }
@@ -63,17 +68,21 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // Validate file content using magic bytes (prevents MIME type spoofing)
+  console.log("[upload-image] Validating file content...");
   const isValidContent = await validateFileContent(file, mimeType);
   if (!isValidContent) {
+    console.error("[upload-image] File content validation failed");
     return Response.json(
       { error: "File content does not match declared file type. Possible file type spoofing." },
       { status: 400 }
     );
   }
+  console.log("[upload-image] File content validation passed");
 
   // Validate file size (5MB max)
   const maxSize = 5 * 1024 * 1024; // 5MB
   if (file.size > maxSize) {
+    console.error(`[upload-image] File size exceeds limit: ${file.size} bytes > ${maxSize} bytes`);
     return Response.json(
       { error: "File size exceeds 5MB limit." },
       { status: 400 }
@@ -82,17 +91,25 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     // Generate unique, sanitized filename
+    console.log(`[upload-image] Generating unique filename for: ${file.name}`);
     const uniqueFilename = generateUniqueFilename(file.name);
+    console.log(`[upload-image] Generated filename: ${uniqueFilename}`);
     
     // Upload to Azure Blob Storage with sanitized filename
+    console.log(`[upload-image] Starting upload to Azure Blob Storage...`);
     const url = await uploadBlogImage(file, uniqueFilename);
+    console.log(`[upload-image] Upload completed successfully. URL: ${url}`);
     
-    return Response.json({
+    const response = {
       url,
       filename: uniqueFilename,
-    });
+    };
+    console.log(`[upload-image] Returning success response:`, JSON.stringify(response));
+    return Response.json(response);
   } catch (error: any) {
-    console.error("Error uploading image:", error);
+    console.error("[upload-image] ERROR during upload process:", error);
+    console.error("[upload-image] Error message:", error.message);
+    console.error("[upload-image] Error stack:", error.stack);
     return Response.json(
       { error: "Failed to upload image", details: error.message },
       { status: 500 }
