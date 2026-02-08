@@ -2,7 +2,8 @@ import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-bl
 
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME || "";
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY || "";
-const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || "blog-images";
+// Blog images should always use the blog-images container, regardless of AZURE_STORAGE_CONTAINER_NAME
+const blogImagesContainerName = "blog-images";
 const useLocalStack = process.env.USE_LOCALSTACK === "true";
 const localStackEndpoint = process.env.LOCALSTACK_ENDPOINT || "http://localhost:4566";
 
@@ -38,12 +39,13 @@ export async function uploadBlogImage(
     console.log(`[uploadBlogImage] Starting upload: filename=${filename}`);
     
     const client = getBlobServiceClient();
-    const containerClient = client.getContainerClient(containerName);
+    // Always use blog-images container for blog image uploads
+    const containerClient = client.getContainerClient(blogImagesContainerName);
 
     // Ensure container exists (defaults to private if access not specified)
-    console.log(`[uploadBlogImage] Ensuring container exists: ${containerName}`);
+    console.log(`[uploadBlogImage] Ensuring container exists: ${blogImagesContainerName}`);
     await containerClient.createIfNotExists();
-    console.log(`[uploadBlogImage] Container verified: ${containerName}`);
+    console.log(`[uploadBlogImage] Container verified: ${blogImagesContainerName}`);
 
     // Use the filename as-is (it should already be unique from generateUniqueFilename)
     // Note: blobName should NOT include the container name since we're already in the container
@@ -51,7 +53,7 @@ export async function uploadBlogImage(
     const blobName = filename;
     const fileSize = file instanceof File ? file.size : (file as Buffer).length;
     
-    console.log(`[uploadBlogImage] Upload details: container=${containerName}, blobName=${blobName}, fileSize=${fileSize} bytes`);
+    console.log(`[uploadBlogImage] Upload details: container=${blogImagesContainerName}, blobName=${blobName}, fileSize=${fileSize} bytes`);
 
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
