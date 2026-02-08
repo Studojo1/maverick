@@ -74,7 +74,11 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
     
     try {
       // Forward all cookies to frontend, including Origin header for CORS
-      const origin = request.headers.get("Origin") || `https://${new URL(frontendUrl).hostname}`;
+      // Use the maverick origin so the share-token endpoint recognizes it as a valid admin panel request
+      const maverickUrl = process.env.VITE_MAVERICK_URL || "https://maverick.studojo.pro";
+      const origin = request.headers.get("Origin") || maverickUrl;
+      const referer = request.headers.get("Referer") || maverickUrl;
+      
       const response = await fetch(`${frontendUrl}/api/auth/share-token`, {
         method: "GET",
         headers: {
@@ -82,7 +86,7 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
           "Content-Type": "application/json",
           "User-Agent": request.headers.get("User-Agent") || "Maverick/1.0",
           "Origin": origin,
-          "Referer": request.headers.get("Referer") || `${origin}/`,
+          "Referer": referer,
         },
         // Important: don't follow redirects
         redirect: "manual",
