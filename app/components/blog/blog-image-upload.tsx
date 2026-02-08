@@ -43,33 +43,45 @@ export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUp
     setUploading(true);
 
     try {
-      const token = await getToken();
-      if (!token) {
-        console.error("[blog-image-upload] No token available");
-        throw new Error("Not authenticated. Please log in again.");
+      // Try to get token, but don't fail if it's not available - rely on cookies
+      let token: string | null = null;
+      try {
+        token = await getToken();
+        console.debug("[blog-image-upload] Token retrieved:", token ? "yes" : "no");
+      } catch (tokenError) {
+        console.warn("[blog-image-upload] Failed to get token, will rely on cookies:", tokenError);
       }
 
       const formData = new FormData();
       formData.append("file", file);
 
-      // Note: Don't set Content-Type header when using FormData - browser sets it automatically with boundary
-      const headers: HeadersInit = {
-        Authorization: `Bearer ${token}`,
-      };
+      // Build headers - include Authorization if we have a token
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
       const response = await fetch("/api/blog/upload-image", {
         method: "POST",
         headers,
-        credentials: "include", // Include cookies in case token auth fails
+        credentials: "include", // Always include cookies - this is the primary auth method
         body: formData,
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error("Authentication required. Please log in again.");
+          // Try to get more details from the error response
+          let errorMessage = "Authentication required. Please log in again.";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch {
+            // If response isn't JSON, use default message
+          }
+          throw new Error(errorMessage);
         }
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to upload image");
+        throw new Error(errorData.error || errorData.message || "Failed to upload image");
       }
 
       const data = await response.json();

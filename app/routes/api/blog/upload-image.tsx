@@ -12,16 +12,19 @@ export async function action({ request }: Route.ActionArgs) {
   // Check authentication and ops/admin role
   const authHeader = request.headers.get("Authorization");
   const cookies = request.headers.get("Cookie");
+  const origin = request.headers.get("Origin");
+  
   console.debug("[upload-image] Authorization header:", authHeader ? "present" : "missing");
   console.debug("[upload-image] Cookies:", cookies ? "present" : "missing");
+  console.debug("[upload-image] Origin:", origin || "missing");
   
   const user = await getUserFromRequest(request);
   if (!user) {
-    console.debug("[upload-image] No user found from request");
+    console.debug("[upload-image] No user found from request - auth failed");
     // Return more helpful error message
     return Response.json({ 
       error: "Unauthorized", 
-      message: "Please ensure you are logged in and have the required permissions."
+      message: "Please ensure you are logged in and have the required permissions. Try refreshing the page."
     }, { status: 401 });
   }
   
