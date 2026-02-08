@@ -65,10 +65,11 @@ export async function uploadBlogImage(
   }
 
   // Return URL pointing to frontend app's image serving endpoint
+  // Include the container name in the URL path
   const frontendUrl = process.env.VITE_FRONTEND_URL || 
                       process.env.FRONTEND_URL || 
                       "https://studojo.com";
-  return `${frontendUrl}/api/images/${blobName}`;
+  return `${frontendUrl}/api/images/blog-images/${blobName}`;
 }
 
 export async function getBlobUrl(blobName: string): Promise<string> {
