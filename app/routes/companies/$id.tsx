@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
+import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
@@ -38,6 +39,7 @@ export default function EditCompany({ data }: Route.ComponentProps) {
   const company = (loaderData?.company || data?.company) as any | undefined;
   const navigate = useNavigate();
   const { isAuthorized, isPending } = useOpsGuard();
+  const { showConfirm } = useModal();
   const [name, setName] = useState(company?.name || "");
   const [email, setEmail] = useState(company?.email || "");
   const [phone, setPhone] = useState(company?.phone || "");
@@ -182,7 +184,8 @@ export default function EditCompany({ data }: Route.ComponentProps) {
 
   const handleDeleteUser = async (userId: string) => {
     if (!company) return;
-    if (!window.confirm("Are you sure you want to delete this partner user?")) {
+    const confirmed = await showConfirm("Are you sure you want to delete this partner user?");
+    if (!confirmed) {
       return;
     }
 
@@ -215,11 +218,10 @@ export default function EditCompany({ data }: Route.ComponentProps) {
 
   const handleArchive = async () => {
     if (!company) return;
-    if (
-      !window.confirm(
-        `Archive ${company.name}? This hides the company from Maverick, but keeps its history.`
-      )
-    ) {
+    const confirmed = await showConfirm(
+      `Archive ${company.name}? This hides the company from Maverick, but keeps its history.`
+    );
+    if (!confirmed) {
       return;
     }
 

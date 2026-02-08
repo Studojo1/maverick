@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
+import { celebrate } from "~/lib/confetti";
 import { toast } from "sonner";
 import { BlogForm } from "~/components/blog/blog-form";
 import { DashboardLayout } from "~/components/dashboard/layout";
@@ -57,6 +58,7 @@ export default function NewBlogPost() {
 
       const result = await response.json();
       toast.success("Post created successfully");
+      celebrate();
       navigate(`/blog/${result.post.id}`);
     } catch (error: any) {
       console.error("Error creating post:", error);

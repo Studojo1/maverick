@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useModal } from "~/components/common/modal-context";
 import { TipTapEditor } from "./tiptap-editor";
 import { BlogImageUpload } from "./blog-image-upload";
 
@@ -24,6 +25,7 @@ interface BlogFormProps {
 }
 
 export function BlogForm({ initialData, onSubmit, onCancel }: BlogFormProps) {
+  const { showAlert } = useModal();
   const [title, setTitle] = useState(initialData?.title || "");
   const [content, setContent] = useState(initialData?.content || "");
   const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
@@ -44,7 +46,7 @@ export function BlogForm({ initialData, onSubmit, onCancel }: BlogFormProps) {
     e.preventDefault();
 
     if (!title.trim() || !content.trim() || !excerpt.trim()) {
-      alert("Please fill in all required fields");
+      await showAlert("Please fill in all required fields");
       return;
     }
 

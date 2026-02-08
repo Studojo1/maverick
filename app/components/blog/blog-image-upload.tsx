@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiUpload, FiX, FiEdit2 } from "react-icons/fi";
 import { motion } from "framer-motion";
+import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 
 interface BlogImageUploadProps {
@@ -10,6 +11,7 @@ interface BlogImageUploadProps {
 }
 
 export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUploadProps) {
+  const { showAlert } = useModal();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(value || null);
   const [imageError, setImageError] = useState(false);
@@ -30,13 +32,13 @@ export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUp
   const handleFileSelect = async (file: File) => {
     // Validate file type
     if (!file.type.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-      alert("Please upload a JPEG, PNG, or WebP image");
+      await showAlert("Please upload a JPEG, PNG, or WebP image");
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB");
+      await showAlert("Image must be less than 5MB");
       return;
     }
 
@@ -89,7 +91,7 @@ export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUp
       onChange?.(data.url);
     } catch (error: any) {
       console.error("Error uploading image:", error);
-      alert(error.message || "Failed to upload image");
+      await showAlert(error.message || "Failed to upload image");
     } finally {
       setUploading(false);
     }

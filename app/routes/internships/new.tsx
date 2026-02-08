@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
 import { getToken } from "~/lib/api";
+import { celebrate } from "~/lib/confetti";
 import { toast } from "sonner";
 import { InternshipForm } from "~/components/internship/internship-form";
 import { DashboardLayout } from "~/components/dashboard/layout";
@@ -44,6 +45,7 @@ export default function NewInternship() {
 
       const result = await response.json();
       toast.success("Internship created successfully");
+      celebrate();
       navigate(`/internships/${result.internship.id}`);
     } catch (error: any) {
       console.error("Error creating internship:", error);

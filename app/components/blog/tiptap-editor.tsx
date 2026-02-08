@@ -11,6 +11,7 @@ import Highlight from "@tiptap/extension-highlight";
 import { useState, useEffect } from "react";
 import { FiBold, FiItalic, FiUnderline, FiCode, FiLink, FiImage, FiAlignLeft, FiAlignCenter, FiAlignRight, FiList, FiType, FiMinus, FiMessageSquare, FiUpload } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { useModal } from "~/components/common/modal-context";
 
 interface TipTapEditorProps {
   content?: string;
@@ -19,6 +20,7 @@ interface TipTapEditorProps {
 }
 
 export function TipTapEditor({ content = "", onChange, placeholder = "Start writing..." }: TipTapEditorProps) {
+  const { showAlert } = useModal();
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [showImageDialog, setShowImageDialog] = useState(false);
@@ -101,13 +103,13 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
 
     // Validate file type
     if (!file.type.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-      alert("Please upload a JPEG, PNG, or WebP image");
+      await showAlert("Please upload a JPEG, PNG, or WebP image");
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB");
+      await showAlert("Image must be less than 5MB");
       return;
     }
 
@@ -129,7 +131,7 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
       editor.chain().focus().setImage({ src: data.url }).run();
     } catch (error) {
       console.error("Error uploading image:", error);
-      alert("Failed to upload image");
+      await showAlert("Failed to upload image");
     } finally {
       setIsUploading(false);
     }

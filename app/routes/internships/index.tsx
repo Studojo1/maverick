@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
+import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
@@ -31,6 +32,7 @@ interface Internship {
 
 export default function InternshipsList() {
   const { isAuthorized, isPending } = useOpsGuard();
+  const { showConfirm } = useModal();
   const [internships, setInternships] = useState<Internship[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -88,7 +90,8 @@ export default function InternshipsList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this internship?")) {
+    const confirmed = await showConfirm("Are you sure you want to delete this internship?");
+    if (!confirmed) {
       return;
     }
 

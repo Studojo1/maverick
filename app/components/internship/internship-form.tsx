@@ -2,6 +2,7 @@ import { useState } from "react";
 import { TipTapEditor } from "../blog/tiptap-editor";
 import { CompanySelector } from "./company-selector";
 import { QuestionBuilder, type Question } from "./question-builder";
+import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ interface InternshipFormProps {
 }
 
 export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFormProps) {
+  const { showAlert } = useModal();
   const [title, setTitle] = useState(initialData?.title || "");
   const [companyId, setCompanyId] = useState<string | null>(initialData?.company_id || null);
   const [companyName, setCompanyName] = useState(initialData?.company_name || "");
@@ -76,7 +78,7 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
     e.preventDefault();
 
     if (!title.trim() || !companyName.trim() || !description.trim() || !requirements.trim()) {
-      alert("Please fill in all required fields");
+      await showAlert("Please fill in all required fields");
       return;
     }
 

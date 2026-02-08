@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useOpsGuard } from "~/lib/ops-guard";
+import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
@@ -29,6 +30,7 @@ interface Company {
 
 export default function Companies() {
   const { isAuthorized, isPending } = useOpsGuard();
+  const { showConfirm } = useModal();
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,11 +82,10 @@ export default function Companies() {
   };
 
   const handleArchive = async (company: Company) => {
-    if (
-      !window.confirm(
-        `Archive ${company.name}? This hides the company from Maverick, but keeps its history.`
-      )
-    ) {
+    const confirmed = await showConfirm(
+      `Archive ${company.name}? This hides the company from Maverick, but keeps its history.`
+    );
+    if (!confirmed) {
       return;
     }
 
