@@ -104,7 +104,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
   if (!baseUrl) {
-    baseUrl = "https://studojo.pro";
+    baseUrl = "https://studojo.com";
   }
   const partnerPanelUrl = process.env.PARTNER_PANEL_URL || "https://partners.studojo.com";
   
