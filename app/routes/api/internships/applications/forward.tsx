@@ -35,10 +35,10 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   // Verify all applications belong to the same internship
-  // Convert array to PostgreSQL array format for ANY() function
-  const applicationIdsArray = sql.raw(`ARRAY[${application_ids.map((id: string) => `'${String(id).replace(/'/g, "''")}'`).join(", ")}]`);
+  // Escape UUIDs and build IN clause
+  const escapedIds = application_ids.map((id: string) => `'${String(id).replace(/'/g, "''")}'`).join(", ");
   const applicationsCheck = await db.execute(
-    sql`SELECT internship_id FROM public.internship_applications WHERE id = ANY(${applicationIdsArray})`
+    sql.raw(`SELECT internship_id FROM public.internship_applications WHERE id IN (${escapedIds})`)
   );
 
   const uniqueInternshipIds = [...new Set(applicationsCheck.rows.map((r: any) => r.internship_id))];
@@ -77,15 +77,17 @@ export async function action({ request }: Route.ActionArgs) {
   );
 
   // Update applications to forwarded status
+  const escapedIdsForUpdate = application_ids.map((id: string) => `'${String(id).replace(/'/g, "''")}'`).join(", ");
+  const escapedToken = token.replace(/'/g, "''");
   await db.execute(
-    sql`
-      UPDATE public.internship_applications SET
+    sql.raw(
+      `UPDATE public.internship_applications SET
         status = 'forwarded',
-        company_token = ${token},
+        company_token = '${escapedToken}',
         forwarded_at = NOW(),
         updated_at = NOW()
-      WHERE id = ANY(${applicationIdsArray})
-    `
+      WHERE id IN (${escapedIdsForUpdate})`
+    )
   );
 
   // Generate URLs - both old token-based and new partner panel
