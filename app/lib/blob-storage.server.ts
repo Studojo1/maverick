@@ -41,9 +41,10 @@ export async function uploadBlogImage(
   await containerClient.createIfNotExists();
 
   // Generate unique filename: timestamp-original-filename
+  // Note: blobName should NOT include the container name since we're already in the container
   const timestamp = Date.now();
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const blobName = `blog-images/${timestamp}-${sanitizedFilename}`;
+  const blobName = `${timestamp}-${sanitizedFilename}`;
 
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
