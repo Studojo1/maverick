@@ -45,17 +45,22 @@ export function BlogImageUpload({ value, onChange, className = "" }: BlogImageUp
     try {
       const token = await getToken();
       if (!token) {
-        throw new Error("Not authenticated");
+        console.error("[blog-image-upload] No token available");
+        throw new Error("Not authenticated. Please log in again.");
       }
 
       const formData = new FormData();
       formData.append("file", file);
 
+      // Note: Don't set Content-Type header when using FormData - browser sets it automatically with boundary
+      const headers: HeadersInit = {
+        Authorization: `Bearer ${token}`,
+      };
+
       const response = await fetch("/api/blog/upload-image", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
+        credentials: "include", // Include cookies in case token auth fails
         body: formData,
       });
 
