@@ -91,7 +91,21 @@ export async function action({ request }: Route.ActionArgs) {
   );
 
   // Generate URLs - both old token-based and new partner panel
-  const baseUrl = process.env.VITE_FRONTEND_URL || "http://localhost:3000";
+  // Use environment variable or infer from request origin
+  let baseUrl = process.env.VITE_FRONTEND_URL || process.env.FRONTEND_URL;
+  if (!baseUrl && request) {
+    try {
+      const requestUrl = new URL(request.url);
+      // Replace maverick subdomain with main domain
+      baseUrl = requestUrl.origin.replace(/maverick\./, "");
+    } catch {
+      // Fallback to production URL
+      baseUrl = "https://studojo.pro";
+    }
+  }
+  if (!baseUrl) {
+    baseUrl = "https://studojo.pro";
+  }
   const partnerPanelUrl = process.env.PARTNER_PANEL_URL || "https://partners.studojo.com";
   
   const tokenUrl = `${baseUrl}/company/internships/${internship_id}?token=${token}`;
