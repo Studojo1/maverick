@@ -59,7 +59,7 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
   }
 
   // If no Authorization header, try to get token from cookies via frontend
-  const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.pro";
+  const frontendUrl = process.env.VITE_AUTH_URL || "https://studojo.com";
   const cookies = request.headers.get("Cookie");
   
   // Also check for Better Auth session cookie directly
@@ -75,7 +75,7 @@ export async function getUserFromRequest(request: Request): Promise<UserInfo | n
     try {
       // Forward all cookies to frontend, including Origin header for CORS
       // Use the maverick origin so the share-token endpoint recognizes it as a valid admin panel request
-      const maverickUrl = process.env.VITE_MAVERICK_URL || "https://maverick.studojo.pro";
+      const maverickUrl = process.env.VITE_MAVERICK_URL || "https://maverick.studojo.com";
       const origin = request.headers.get("Origin") || maverickUrl;
       const referer = request.headers.get("Referer") || maverickUrl;
       

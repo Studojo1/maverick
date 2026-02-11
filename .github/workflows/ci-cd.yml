@@ -1,0 +1,29 @@
+name: Maverick CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'apps/maverick/**'
+      - '.github/workflows/service-ci-cd.yml'
+  tags:
+    - 'v*.*.*'
+
+jobs:
+  build-and-deploy:
+    uses: ./.github/workflows/service-ci-cd.yml@main
+    with:
+      service_name: maverick
+      service_path: ./apps/maverick
+      k8s_deployment_name: maverick
+      k8s_container_name: maverick
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      KUBECONFIG: ${{ secrets.KUBECONFIG }}
+      DEV_PANEL_WEBHOOK_URL: ${{ secrets.DEV_PANEL_WEBHOOK_URL }}
+

@@ -45,5 +45,5 @@ echo ""
 echo "Next steps:"
 echo "1. Verify posts in database"
 echo "2. Check images in blob storage"
-echo "3. Access Maverick at: https://maverick.studojo.pro"
+echo "3. Access Maverick at: https://maverick.studojo.com"
 

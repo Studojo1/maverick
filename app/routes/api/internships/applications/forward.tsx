@@ -100,7 +100,7 @@ export async function action({ request }: Route.ActionArgs) {
       baseUrl = requestUrl.origin.replace(/maverick\./, "");
     } catch {
       // Fallback to production URL
-      baseUrl = "https://studojo.pro";
+      baseUrl = "https://studojo.com";
     }
   }
   if (!baseUrl) {

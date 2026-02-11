@@ -14,7 +14,7 @@ function getFrontendUrl(): string {
       return `http://${host}:3000`;
     }
     
-    // Handle production subdomain: maverick.studojo.pro -> studojo.pro
+    // Handle production subdomain: maverick.studojo.com -> studojo.com
     if (host.startsWith("maverick.")) {
       const baseHost = host.replace(/^maverick\./, "");
       return `${protocol}//${baseHost}`;

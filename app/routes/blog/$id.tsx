@@ -101,7 +101,7 @@ export default function EditBlogPost() {
       }
 
       toast.success("Post updated successfully");
-      navigate("/");
+      navigate("/blog");
     } catch (error: any) {
       console.error("Error updating post:", error);
       toast.error(error.message || "Failed to update post");
@@ -189,7 +189,7 @@ export default function EditBlogPost() {
               tags: post.tags,
             }}
             onSubmit={handleSubmit}
-            onCancel={() => navigate("/")}
+            onCancel={() => navigate("/blog")}
           />
         </div>
       </div>

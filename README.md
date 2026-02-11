@@ -71,7 +71,7 @@ UPDATE "user" SET role = 'ops' WHERE email = 'user@example.com';
 
 ## Domain
 
-Production domain: `maverick.studojo.pro`
+Production domain: `maverick.studojo.com`
 
 SSL certificates are automatically managed via cert-manager in Kubernetes.
 

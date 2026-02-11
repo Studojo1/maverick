@@ -94,7 +94,10 @@ export default function NewBlogPost() {
         </div>
 
         <div className="rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden">
-          <BlogForm onSubmit={handleSubmit} onCancel={() => navigate("/")}           />
+          <BlogForm
+            onSubmit={handleSubmit}
+            onCancel={() => navigate("/blog")}
+          />
         </div>
       </div>
     </DashboardLayout>
