@@ -9,9 +9,10 @@ import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { useState, useEffect } from "react";
-import { FiBold, FiItalic, FiUnderline, FiCode, FiLink, FiImage, FiAlignLeft, FiAlignCenter, FiAlignRight, FiList, FiType, FiMinus, FiMessageSquare, FiUpload } from "react-icons/fi";
+import { FiBold, FiItalic, FiUnderline, FiCode, FiLink, FiImage, FiAlignLeft, FiAlignCenter, FiAlignRight, FiList, FiType, FiMinus, FiMessageSquare, FiUpload, FiZap } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "~/components/common/modal-context";
+import { StudojoCTA } from "./tiptap-cta-extension";
 
 interface TipTapEditorProps {
   content?: string;
@@ -59,6 +60,7 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
       Highlight.configure({
         multicolor: true,
       }),
+      StudojoCTA,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -300,6 +302,19 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
             title="Align Right"
           >
             <FiAlignRight className="w-5 h-5" />
+          </ToolbarButton>
+        </div>
+
+        <div className="w-px h-8 bg-neutral-900" />
+
+        {/* CTA Block */}
+        <div className="flex items-center gap-1.5">
+          <ToolbarButton
+            onClick={() => (editor as any).chain().focus().insertStudojoCTA().run()}
+            isActive={false}
+            title="Insert Outreach CTA Block"
+          >
+            <FiZap className="w-5 h-5" />
           </ToolbarButton>
         </div>
 
