@@ -11,6 +11,7 @@ export default [
   route("api/auth/check-role", "routes/api.auth.check-role.tsx"),
   // Blog API
   route("api/blog/upload-image", "routes/api/blog/upload-image.tsx"),
+  route("api/blog/n8n", "routes/api/blog/n8n.tsx"),
   route("api/blog/:id", "routes/api/blog/$id.tsx"),
   route("api/blog", "routes/api/blog/route.tsx"),
   // Images API

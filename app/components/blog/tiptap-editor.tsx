@@ -9,10 +9,11 @@ import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import { useState, useEffect } from "react";
-import { FiBold, FiItalic, FiUnderline, FiCode, FiLink, FiImage, FiAlignLeft, FiAlignCenter, FiAlignRight, FiList, FiType, FiMinus, FiMessageSquare, FiUpload, FiZap } from "react-icons/fi";
+import { FiBold, FiItalic, FiUnderline, FiCode, FiLink, FiImage, FiAlignLeft, FiAlignCenter, FiAlignRight, FiList, FiType, FiMinus, FiMessageSquare, FiUpload, FiZap, FiMousePointer } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "~/components/common/modal-context";
 import { StudojoCTA } from "./tiptap-cta-extension";
+import { ButtonBlock } from "./tiptap-button-extension";
 
 interface TipTapEditorProps {
   content?: string;
@@ -61,6 +62,7 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
         multicolor: true,
       }),
       StudojoCTA,
+      ButtonBlock,
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -307,7 +309,7 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
 
         <div className="w-px h-8 bg-neutral-900" />
 
-        {/* CTA Block */}
+        {/* CTA & Button Blocks */}
         <div className="flex items-center gap-1.5">
           <ToolbarButton
             onClick={() => (editor as any).chain().focus().insertStudojoCTA().run()}
@@ -315,6 +317,13 @@ export function TipTapEditor({ content = "", onChange, placeholder = "Start writ
             title="Insert Outreach CTA Block"
           >
             <FiZap className="w-5 h-5" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => (editor as any).chain().focus().insertButtonBlock().run()}
+            isActive={false}
+            title="Insert Custom Button"
+          >
+            <FiMousePointer className="w-5 h-5" />
           </ToolbarButton>
         </div>
 
