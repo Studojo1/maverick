@@ -36,10 +36,25 @@ import readingTime from "reading-time";
  * }
  */
 
-function apiKeyAuth(request: Request): boolean {
-  const apiKey = process.env.N8N_BLOG_API_KEY;
+async function getApiKey(): Promise<string | null> {
+  // 1. Prefer env var (set via kubectl)
+  if (process.env.N8N_BLOG_API_KEY) return process.env.N8N_BLOG_API_KEY;
+  // 2. Fall back to platform_settings table (set via admin panel)
+  try {
+    const result = await db.execute(
+      sql`SELECT value FROM platform_settings WHERE key = 'n8n_blog_api_key' LIMIT 1`
+    );
+    if (result.rows.length > 0) return (result.rows[0] as any).value as string;
+  } catch {
+    // Table may not exist yet
+  }
+  return null;
+}
+
+async function apiKeyAuth(request: Request): Promise<boolean> {
+  const apiKey = await getApiKey();
   if (!apiKey) {
-    console.error("[n8n blog] N8N_BLOG_API_KEY env var is not set");
+    console.error("[n8n blog] No API key configured. Set N8N_BLOG_API_KEY env var or via Admin > Settings.");
     return false;
   }
   const provided = request.headers.get("X-API-Key") || request.headers.get("x-api-key");
@@ -51,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  if (!apiKeyAuth(request)) {
+  if (!await apiKeyAuth(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
