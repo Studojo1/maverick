@@ -33,8 +33,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const offset = (page - 1) * limit;
 
-  let whereClause = sql`1=1`;
-  
+  // Always exclude scraper-inserted rows (map data only, not for Maverick)
+  let whereClause = sql`created_by IS DISTINCT FROM 'scraper-system'`;
+
   if (status && status !== "all") {
     whereClause = sql`${whereClause} AND status = ${status}`;
   }
