@@ -48,15 +48,13 @@ export async function sendRejectionEmail(params: RejectionEmailParams): Promise<
   const subject = `Update on your application for ${role} at ${company}`;
   const text = `Hi ${name},
 
-Thank you for your interest in the ${role} internship opportunity at ${company}, and for taking the time to apply through Studojo.
+Thank you for applying to the ${role} internship at ${company} through Studojo.
 
-After reviewing your application, the hiring team has decided not to move forward with your application for this role.
+After reviewing applications, the team has decided not to move forward with your application for this position.
 
-We appreciate the time and effort you invested in applying, and we encourage you to continue exploring other opportunities that match your background and interests.
+We appreciate the time you took to apply and wish you the best with your internship search.
 
-We wish you all the best in your internship search and future career journey.
-
-Best regards,
+Best,
 Studojo Internships`;
 
   const fromEmail = process.env.GMAIL_USER!.trim();
