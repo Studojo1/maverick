@@ -33,6 +33,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
       SELECT
         ia.resume_snapshot,
         ia.resume_id,
+        ia.resume_file_url,
+        ia.resume_file_content_type,
+        ia.resume_file_name,
         r.name as resume_name,
         u.name as user_name
       FROM public.internship_applications ia
@@ -49,10 +52,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const app = applicationResult.rows[0] as any;
 
+  // hasOriginalFile tells the viewer that the download endpoint will return the
+  // candidate's actual uploaded file (preferred) rather than a snapshot re-render.
+  // The viewer's existing flow already streams the download endpoint into an
+  // iframe, so PDFs / images render natively without further client changes.
   return Response.json({
     resume: app.resume_snapshot,
-    resumeName: app.resume_name,
+    resumeName: app.resume_file_name || app.resume_name,
     userName: app.user_name,
+    hasOriginalFile: Boolean(app.resume_file_url),
+    originalContentType: app.resume_file_content_type ?? null,
   });
 }
 
