@@ -73,20 +73,15 @@ jobs:
             --name ${{ secrets.AKS_CLUSTER_NAME }} \
             --overwrite-existing
 
-      - name: Ensure Azure OpenAI secret
+      - name: Wire Azure OpenAI env from shared app-secrets
         run: |
-          kubectl create secret generic maverick-azure-openai \
-            --namespace studojo \
-            --from-literal=AZURE_OPENAI_ENDPOINT="${{ secrets.MAVERICK_AZURE_OPENAI_ENDPOINT }}" \
-            --from-literal=AZURE_OPENAI_API_KEY="${{ secrets.MAVERICK_AZURE_OPENAI_API_KEY }}" \
-            --from-literal=AZURE_OPENAI_DEPLOYMENT="${{ secrets.MAVERICK_AZURE_OPENAI_DEPLOYMENT }}" \
-            --from-literal=AZURE_OPENAI_API_VERSION="${{ secrets.MAVERICK_AZURE_OPENAI_API_VERSION }}" \
-            --save-config --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Wire Azure OpenAI env into deployment
-        run: |
+          # Reuse the existing Azure OpenAI credentials already stored in the
+          # shared `app-secrets` secret (same source the other studojo services
+          # use). Imports as AZURE_OPENAI_ENDPOINT / AZURE_OPENAI_API_KEY /
+          # AZURE_OPENAI_CHAT_DEPLOYMENT; appended to maverick's existing env.
           kubectl set env deployment/${{ env.APP_NAME }} -n studojo \
-            --from=secret/maverick-azure-openai
+            --from=secret/app-secrets \
+            --keys=azure-openai-endpoint,azure-openai-api-key,azure-openai-chat-deployment
 
       - name: Deploy to Kubernetes
         run: |

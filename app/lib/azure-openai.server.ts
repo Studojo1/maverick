@@ -5,12 +5,18 @@
  * don't pull in a heavy SDK. Used by the internship "Generate Opening" and
  * "Generate WhatsApp message" features.
  *
- * Required env vars (set on the maverick deployment in the `studojo` namespace):
- *   AZURE_OPENAI_ENDPOINT     e.g. https://my-resource.openai.azure.com
- *   AZURE_OPENAI_API_KEY      the resource key
- *   AZURE_OPENAI_DEPLOYMENT   the chat model deployment name
- *   AZURE_OPENAI_API_VERSION  optional, defaults to 2024-10-21
+ * Required env vars (wired from the shared `app-secrets` secret in the
+ * `studojo` namespace, same as the other services):
+ *   AZURE_OPENAI_ENDPOINT          e.g. https://my-resource.openai.azure.com
+ *   AZURE_OPENAI_API_KEY           the resource key
+ *   AZURE_OPENAI_CHAT_DEPLOYMENT   the chat model deployment name
+ *     (AZURE_OPENAI_DEPLOYMENT is also accepted as an alias)
+ *   AZURE_OPENAI_API_VERSION       optional, defaults to 2024-10-21
  */
+
+function getDeployment(): string | undefined {
+  return process.env.AZURE_OPENAI_DEPLOYMENT || process.env.AZURE_OPENAI_CHAT_DEPLOYMENT;
+}
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -28,7 +34,7 @@ export function isAzureOpenAIConfigured(): boolean {
   return Boolean(
     process.env.AZURE_OPENAI_ENDPOINT &&
       process.env.AZURE_OPENAI_API_KEY &&
-      process.env.AZURE_OPENAI_DEPLOYMENT
+      getDeployment()
   );
 }
 
@@ -38,12 +44,12 @@ export async function chatCompletion(
 ): Promise<string> {
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+  const deployment = getDeployment();
   const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-10-21";
 
   if (!endpoint || !apiKey || !deployment) {
     throw new Error(
-      "Azure OpenAI is not configured. Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT."
+      "Azure OpenAI is not configured. Set AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY and AZURE_OPENAI_CHAT_DEPLOYMENT."
     );
   }
 
