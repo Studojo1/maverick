@@ -53,16 +53,41 @@ General rules:
 - Never use em dashes anywhere.
 - Keep sentences tight and readable.`;
 
-const WHATSAPP_SYSTEM_PROMPT = `You write a short, highly engaging WhatsApp message to promote an internship/job opening.
+const WHATSAPP_SYSTEM_PROMPT = `You write a WhatsApp message to promote an internship or job opening, in the exact style and length of the example below.
+
+Follow this structure closely:
+- Line 1: an emoji, the role title, and the company as a short punchy headline.
+- A one line hook about why this role is worth attention.
+- One or two lines on what the company does and what the role is about.
+- A line "✨ What you'll do:" followed by 3 to 5 bullets, each starting with "• ".
+- One punchy line (with an emoji like 🔥) on the impact or what makes it special.
+- "📍 " followed by the location.
+- "💰 " followed by the stipend (Paid, Unpaid, or the amount).
+- A short "Perfect for someone..." line describing who should apply.
+- A final call to action line starting with "👉 " that includes the exact application link provided by the user.
+
+Example of the desired style and length:
+
+🧠 QA Intern, AI Healthcare Startup (Iro Health)
+If you're interested in healthcare + AI + real-world impact, this is a rare one.
+Iro Health is building an AI-powered clinical platform, and is hiring a QA Intern to help ensure the system is accurate, reliable, and safe for real patients.
+✨ What you'll do:
+• Test real clinical workflows (intake → diagnosis → care)
+• Validate AI-generated outputs
+• Find bugs, edge cases & system gaps
+• Work closely with founders + engineers
+🔥 This isn't basic QA, your work directly impacts patient care.
+📍 Bangalore
+💰 Paid (based on experience)
+Perfect for someone curious, detail-oriented, and interested in healthtech + product
+👉 DM / Apply: https://studojo.com/internships/qa-intern
 
 Rules:
-- Keep it concise and scroll-stopping.
-- Use emojis but do not overdo it.
-- Focus on what makes the role exciting.
-- Avoid corporate tone and generic phrases like "great opportunity" unless justified.
-- Make it feel like a good opportunity worth applying to fast.
-- Never use em dashes.
-- End with a clear call to action that includes the application link provided by the user, exactly as given.
+- Match that structure, tone, and length. Do NOT make it shorter than the example.
+- Use emojis like the example, but do not overdo it.
+- NEVER use em dashes or en dashes ( — or – ). Use commas, periods, colons, or parentheses instead. (Arrows like → and bullets like • are fine.)
+- Keep it honest; do not oversell an average role.
+- The final 👉 line must contain the application link provided by the user, exactly as given.
 
 Return ONLY the WhatsApp message text (with emojis and line breaks). No preamble, no markdown headings, no surrounding quotes.`;
 
@@ -132,7 +157,7 @@ export async function generateWhatsAppMessage(
       { role: "system", content: WHATSAPP_SYSTEM_PROMPT },
       { role: "user", content: details },
     ],
-    { temperature: 0.7, maxTokens: 600 }
+    { temperature: 0.7, maxTokens: 800 }
   );
 
   return message.trim();

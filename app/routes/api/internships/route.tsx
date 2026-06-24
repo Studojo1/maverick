@@ -92,6 +92,29 @@ export async function action({ request }: Route.ActionArgs) {
     return Response.json({ error: "Title, company name, description, and requirements are required" }, { status: 400 });
   }
 
+  // Resolve the company: if no company was explicitly selected, create or
+  // select one by name (whichever applies). Falls back to a null company_id
+  // (storing just the name) if the companies table is unavailable.
+  let resolvedCompanyId: string | null = company_id || null;
+  if (!resolvedCompanyId && company_name?.trim()) {
+    const name = company_name.trim();
+    try {
+      const existingCompany = await db.execute(
+        sql`SELECT id FROM companies WHERE name = ${name} AND is_deleted = false LIMIT 1`
+      );
+      if (existingCompany.rows.length > 0) {
+        resolvedCompanyId = (existingCompany.rows[0] as any).id;
+      } else {
+        const createdCompany = await db.execute(
+          sql`INSERT INTO companies (name) VALUES (${name}) RETURNING id`
+        );
+        resolvedCompanyId = (createdCompany.rows[0] as any).id;
+      }
+    } catch (e: any) {
+      console.warn("[maverick] Could not resolve company, storing name only:", e?.message);
+    }
+  }
+
   // Generate slug
   let slug = slugify(title, { lower: true, strict: true });
   let counter = 1;
@@ -116,7 +139,7 @@ export async function action({ request }: Route.ActionArgs) {
         title, company_name, company_id, description, requirements, location, duration, stipend,
         application_deadline, status, slug, created_by
       )       VALUES (
-        ${title}, ${company_name}, ${company_id || null}, ${description}, ${requirements},
+        ${title}, ${company_name}, ${resolvedCompanyId}, ${description}, ${requirements},
         ${location || null}, ${duration || null}, ${stipend || null},
         ${application_deadline ? new Date(application_deadline) : null},
         ${status || "draft"}, ${slug}, ${user.id}

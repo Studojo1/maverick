@@ -37,14 +37,23 @@ export function CompanySelector({
     loadCompanies();
   }, []);
 
-  // Seed the input with an externally supplied name (e.g. AI-extracted) when
-  // nothing is selected yet, so the reviewer can see and confirm/create it.
+  // Seed/select from an externally supplied name (e.g. AI-extracted) when
+  // nothing is selected yet: auto-select an existing company if the name
+  // matches, otherwise show the typed name (the server creates it on submit).
   useEffect(() => {
-    if (!value && initialName && searchQuery.trim() === "") {
+    if (value || !initialName) return;
+    const match = companies.find(
+      (c) => c.name.toLowerCase() === initialName.toLowerCase()
+    );
+    if (match) {
+      setSelectedCompany(match);
+      setSearchQuery(match.name);
+      onChange(match.id, match.name);
+    } else if (searchQuery.trim() === "") {
       setSearchQuery(initialName);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialName, value]);
+  }, [initialName, value, companies]);
 
   useEffect(() => {
     if (value && companies.length > 0) {
