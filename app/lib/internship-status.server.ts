@@ -33,20 +33,44 @@ export function isPipelineStatus(value: unknown): value is PipelineStatus {
   );
 }
 
-// Run the ALTER once per process; subsequent calls await the same promise.
-let ensurePromise: Promise<void> | null = null;
+// Resolve the column once per process; subsequent calls await the same promise.
+let ensurePromise: Promise<boolean> | null = null;
 
-export function ensurePipelineStatusColumn(): Promise<void> {
+/**
+ * Make sure the pipeline_status column exists, creating it if possible.
+ *
+ * Never throws. Returns true if the column is present (or was just created),
+ * false if it is missing and could not be created (e.g. the app role lacks DDL
+ * permission). Callers must degrade gracefully when this returns false so a
+ * missing column never breaks the internships list or normal edits.
+ */
+export function ensurePipelineStatusColumn(): Promise<boolean> {
   if (!ensurePromise) {
     ensurePromise = (async () => {
-      await db.execute(
-        sql`ALTER TABLE public.internships ADD COLUMN IF NOT EXISTS pipeline_status TEXT NOT NULL DEFAULT 'published'`
-      );
-    })().catch((e) => {
-      // Allow a later request to retry if this failed transiently.
-      ensurePromise = null;
-      throw e;
-    });
+      try {
+        const existing = await db.execute(
+          sql`SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public'
+                AND table_name = 'internships'
+                AND column_name = 'pipeline_status'
+              LIMIT 1`
+        );
+        if (existing.rows.length > 0) return true;
+
+        await db.execute(
+          sql`ALTER TABLE public.internships ADD COLUMN IF NOT EXISTS pipeline_status TEXT NOT NULL DEFAULT 'published'`
+        );
+        return true;
+      } catch (e: any) {
+        console.warn(
+          "[maverick] pipeline_status column unavailable, degrading gracefully:",
+          e?.message
+        );
+        // Allow a later request to retry (e.g. after a transient DB error).
+        ensurePromise = null;
+        return false;
+      }
+    })();
   }
   return ensurePromise;
 }
