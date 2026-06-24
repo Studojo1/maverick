@@ -34,6 +34,10 @@ export default [
     "routes/api/internships/$id/applications.tsx"
   ),
   route(
+    "api/internships/:id/applications/download-zip",
+    "routes/api/internships/$id/applications/download-zip.tsx"
+  ),
+  route(
     "api/internships/applications/:id",
     "routes/api/internships/applications/$id.tsx"
   ),

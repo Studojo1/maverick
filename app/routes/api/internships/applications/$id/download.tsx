@@ -2,7 +2,7 @@ import type { Route } from "./+types/$id.download";
 import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
-import { downloadApplicationResume } from "~/lib/blob-storage.server";
+import { renderApplicationResume } from "~/lib/resume-download.server";
 
 // GET /api/internships/applications/:id/download - Download resume (admin only)
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -52,95 +52,22 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   }
 
   const app = applicationResult.rows[0] as any;
-  const resumeSnapshot = app.resume_snapshot;
   const resumeName = app.resume_file_name || app.resume_name || "resume";
   const userName = app.user_name || "student";
 
-  // Direct-upload applicants (frontend migration 0023): stream the exact file
-  // the candidate submitted, bypassing the snapshot renderer entirely. This is
-  // what ops asked for — preview/download must show the original artifact, not
-  // a re-render of whatever the parser was able to extract.
-  if (app.resume_file_url) {
-    const original = await downloadApplicationResume(app.resume_file_url as string);
-    if (original) {
-      const contentType =
-        (app.resume_file_content_type as string | null) ||
-        original.contentType ||
-        "application/octet-stream";
-      // Preserve original extension by sanitizing the user-supplied filename;
-      // fall back to a sensible default so the browser still saves something.
-      const safeName = resumeName.replace(/[^a-zA-Z0-9._-]/g, "_") || "resume";
-      const filename = `${userName.replace(/[^a-zA-Z0-9.-]/g, "_")}-${safeName}`;
+  // Resolve the bytes using the shared 3-tier strategy (original upload, then
+  // resume-service render, then JSON snapshot). Keeps this endpoint in sync
+  // with the bulk zip download.
+  const rendered = await renderApplicationResume(app);
 
-      return new Response(original.bytes, {
-        headers: {
-          "Content-Type": contentType,
-          "Content-Disposition": `attachment; filename="${filename}"`,
-        },
-      });
-    }
-    // Fall through to snapshot rendering if blob fetch failed — keeps the
-    // endpoint resilient when storage hiccups, rather than dead-ending the row.
-    console.warn(
-      `[applications/download] blob fetch failed for application ${applicationId}, falling back to snapshot render`,
-    );
-  }
+  const safeName = `${userName}-${resumeName}`.replace(/[^a-zA-Z0-9._-]/g, "_") || "resume";
+  const filename = safeName.toLowerCase().endsWith(`.${rendered.ext}`)
+    ? safeName
+    : `${safeName}.${rendered.ext}`;
 
-  // Try to generate PDF using resume service
-  const resumeServiceUrl = process.env.RESUME_SERVICE_URL || "http://resume-service:8086";
-  
-  try {
-    // Add timeout to fetch (30 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    const pdfResponse = await fetch(`${resumeServiceUrl}/make-resume`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(resumeSnapshot),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (pdfResponse.ok) {
-      const contentType = pdfResponse.headers.get("content-type");
-      if (contentType?.includes("application/pdf")) {
-        const pdfBytes = await pdfResponse.arrayBuffer();
-        const filename = `${userName}-${resumeName}-${applicationId}.pdf`.replace(/[^a-zA-Z0-9.-]/g, "_");
-
-        return new Response(pdfBytes, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="${filename}"`,
-          },
-        });
-      } else {
-        // Service returned non-PDF, log and fall back
-        const errorText = await pdfResponse.text();
-        console.error(`Resume service returned non-PDF content (${contentType}): ${errorText.substring(0, 200)}`);
-      }
-    } else {
-      // If PDF generation fails, log and fall back to JSON
-      const errorText = await pdfResponse.text();
-      console.error(`Resume service returned ${pdfResponse.status}: ${errorText.substring(0, 200)}`);
-    }
-  } catch (error: any) {
-    // If service is unavailable or times out, fall back to JSON
-    if (error.name === "AbortError") {
-      console.error("Resume service request timed out after 30 seconds");
-    } else {
-      console.error("Failed to generate PDF from resume service:", error.message || error);
-    }
-  }
-
-  // Fallback: Return as JSON download if PDF generation fails
-  const jsonContent = JSON.stringify(resumeSnapshot, null, 2);
-  const filename = `${userName}-${resumeName}-${applicationId}.json`;
-
-  return new Response(jsonContent, {
+  return new Response(rendered.bytes, {
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": rendered.contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
