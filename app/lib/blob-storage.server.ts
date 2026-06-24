@@ -31,6 +31,68 @@ function getBlobServiceClient(): BlobServiceClient {
   return blobServiceClient;
 }
 
+/**
+ * Download an application's preserved resume file from blob storage.
+ * The frontend's /api/resumes/parse stores uploaded PDFs in a private container
+ * (see Studojo1/frontend/app/lib/blob-storage.server.ts uploadApplicationResume).
+ * This reads the bytes back so the ops dashboard can stream the *original* file
+ * to the reviewer instead of a re-rendered JSON snapshot.
+ *
+ * Accepts the full blob URL as stored in internship_applications.resume_file_url
+ * and returns the raw bytes plus the storage-reported content type. Returns null
+ * if the blob can't be located or fetched.
+ */
+export async function downloadApplicationResume(
+  blobUrl: string,
+): Promise<{ bytes: ArrayBuffer; contentType: string | null } | null> {
+  try {
+    const url = new URL(blobUrl);
+    // Path is "/<container>/<blobName...>" for real Azure, or
+    // "/<account>/<container>/<blobName...>" when using LocalStack endpoints.
+    // We normalize by stripping the leading slash and the first segment iff
+    // it matches the configured storage account (LocalStack quirk).
+    const segments = url.pathname.replace(/^\/+/, "").split("/");
+    let containerName: string | undefined;
+    let blobName: string | undefined;
+    if (useLocalStack && segments[0] === accountName) {
+      containerName = segments[1];
+      blobName = segments.slice(2).join("/");
+    } else {
+      containerName = segments[0];
+      blobName = segments.slice(1).join("/");
+    }
+    if (!containerName || !blobName) {
+      console.error("[downloadApplicationResume] couldn't parse blob URL:", blobUrl);
+      return null;
+    }
+
+    const client = getBlobServiceClient();
+    const containerClient = client.getContainerClient(containerName);
+    const blobClient = containerClient.getBlobClient(blobName);
+
+    const response = await blobClient.download();
+    const contentType = response.contentType ?? null;
+    const chunks: Buffer[] = [];
+    const stream = response.readableStreamBody;
+    if (!stream) {
+      console.error("[downloadApplicationResume] no readable stream returned for", blobUrl);
+      return null;
+    }
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (chunk: Buffer | string) => {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+      });
+      stream.on("end", () => resolve());
+      stream.on("error", reject);
+    });
+    const buf = Buffer.concat(chunks);
+    return { bytes: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), contentType };
+  } catch (error: any) {
+    console.error("[downloadApplicationResume] failed:", error?.message || error);
+    return null;
+  }
+}
+
 export async function uploadBlogImage(
   file: File | Buffer,
   filename: string

@@ -2,6 +2,7 @@ import type { Route } from "./+types/$id.download";
 import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
+import { downloadApplicationResume } from "~/lib/blob-storage.server";
 
 // GET /api/internships/applications/:id/download - Download resume (admin only)
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -26,17 +27,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const { id: applicationId } = params;
 
-  // Get application with resume snapshot
+  // LEFT JOINs: resume_id is nullable for direct PDF uploads (migration 0018).
+  // Inner joins were silently 404'ing those applications.
   const applicationResult = await db.execute(
     sql`
-      SELECT 
+      SELECT
         ia.resume_snapshot,
         ia.resume_id,
+        ia.resume_file_url,
+        ia.resume_file_content_type,
+        ia.resume_file_name,
         r.name as resume_name,
         u.name as user_name
       FROM public.internship_applications ia
-      JOIN public.resumes r ON ia.resume_id = r.id
-      JOIN public."user" u ON ia.user_id = u.id
+      LEFT JOIN public.resumes r ON ia.resume_id = r.id
+      LEFT JOIN public."user" u ON ia.user_id = u.id
       WHERE ia.id = ${applicationId}
       LIMIT 1
     `
@@ -48,8 +53,38 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const app = applicationResult.rows[0] as any;
   const resumeSnapshot = app.resume_snapshot;
-  const resumeName = app.resume_name || "resume";
+  const resumeName = app.resume_file_name || app.resume_name || "resume";
   const userName = app.user_name || "student";
+
+  // Direct-upload applicants (frontend migration 0023): stream the exact file
+  // the candidate submitted, bypassing the snapshot renderer entirely. This is
+  // what ops asked for — preview/download must show the original artifact, not
+  // a re-render of whatever the parser was able to extract.
+  if (app.resume_file_url) {
+    const original = await downloadApplicationResume(app.resume_file_url as string);
+    if (original) {
+      const contentType =
+        (app.resume_file_content_type as string | null) ||
+        original.contentType ||
+        "application/octet-stream";
+      // Preserve original extension by sanitizing the user-supplied filename;
+      // fall back to a sensible default so the browser still saves something.
+      const safeName = resumeName.replace(/[^a-zA-Z0-9._-]/g, "_") || "resume";
+      const filename = `${userName.replace(/[^a-zA-Z0-9.-]/g, "_")}-${safeName}`;
+
+      return new Response(original.bytes, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+    // Fall through to snapshot rendering if blob fetch failed — keeps the
+    // endpoint resilient when storage hiccups, rather than dead-ending the row.
+    console.warn(
+      `[applications/download] blob fetch failed for application ${applicationId}, falling back to snapshot render`,
+    );
+  }
 
   // Try to generate PDF using resume service
   const resumeServiceUrl = process.env.RESUME_SERVICE_URL || "http://resume-service:8086";

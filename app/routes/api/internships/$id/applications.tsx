@@ -28,16 +28,20 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
 
+  // LEFT JOINs: resume_id is nullable for direct PDF uploads (migration 0018),
+  // and we want to surface applications even if the user row was later deleted.
+  // resume_name prefers ia.resume_file_name (set on direct uploads, frontend
+  // migration 0023) before falling back to r.name (Studojo-builder resume title).
   let query = sql`
-    SELECT 
+    SELECT
       ia.*,
       u.name as user_name,
       u.email as user_email,
       u.phone_number as user_phone,
-      r.name as resume_name
+      COALESCE(ia.resume_file_name, r.name) as resume_name
     FROM public.internship_applications ia
-    JOIN public."user" u ON ia.user_id = u.id
-    JOIN public.resumes r ON ia.resume_id = r.id
+    LEFT JOIN public."user" u ON ia.user_id = u.id
+    LEFT JOIN public.resumes r ON ia.resume_id = r.id
     WHERE ia.internship_id = ${internshipId}
   `;
 

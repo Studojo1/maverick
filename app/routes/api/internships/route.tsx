@@ -37,8 +37,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Make sure the internal pipeline_status column exists so SELECT * returns it.
   await ensurePipelineStatusColumn();
 
-  let whereClause = sql`1=1`;
-  
+  // Always exclude scraper-inserted rows (map data only, not for Maverick)
+  let whereClause = sql`created_by IS DISTINCT FROM 'scraper-system'`;
+
+
   if (status && status !== "all") {
     whereClause = sql`${whereClause} AND status = ${status}`;
   }

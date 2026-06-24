@@ -26,17 +26,21 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const { id: applicationId } = params;
 
-  // Get application with resume snapshot
+  // LEFT JOINs: resume_id is nullable for direct PDF uploads (migration 0018).
+  // Inner joins were silently 404'ing those applications.
   const applicationResult = await db.execute(
     sql`
-      SELECT 
+      SELECT
         ia.resume_snapshot,
         ia.resume_id,
+        ia.resume_file_url,
+        ia.resume_file_content_type,
+        ia.resume_file_name,
         r.name as resume_name,
         u.name as user_name
       FROM public.internship_applications ia
-      JOIN public.resumes r ON ia.resume_id = r.id
-      JOIN public."user" u ON ia.user_id = u.id
+      LEFT JOIN public.resumes r ON ia.resume_id = r.id
+      LEFT JOIN public."user" u ON ia.user_id = u.id
       WHERE ia.id = ${applicationId}
       LIMIT 1
     `
@@ -48,10 +52,16 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const app = applicationResult.rows[0] as any;
 
+  // hasOriginalFile tells the viewer that the download endpoint will return the
+  // candidate's actual uploaded file (preferred) rather than a snapshot re-render.
+  // The viewer's existing flow already streams the download endpoint into an
+  // iframe, so PDFs / images render natively without further client changes.
   return Response.json({
     resume: app.resume_snapshot,
-    resumeName: app.resume_name,
+    resumeName: app.resume_file_name || app.resume_name,
     userName: app.user_name,
+    hasOriginalFile: Boolean(app.resume_file_url),
+    originalContentType: app.resume_file_content_type ?? null,
   });
 }
 
