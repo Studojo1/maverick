@@ -52,14 +52,73 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     throw new Response("Internship not found", { status: 404 });
   }
 
-  return { internship: internshipResult.rows[0] };
+  // Public links live on the main studojo.com domain, not on maverick.*.
+  const publicBaseUrl = (process.env.SITE_URL || "https://studojo.com").replace(/\/$/, "");
+
+  return { internship: internshipResult.rows[0], publicBaseUrl };
 }
 
 export default function EditInternship({ data }: Route.ComponentProps) {
-  const loaderData = useLoaderData() as { internship: any } | undefined;
+  const loaderData = useLoaderData() as
+    | { internship: any; publicBaseUrl: string }
+    | undefined;
   const internship = (loaderData?.internship || data?.internship) as any | undefined;
+  const publicBaseUrl =
+    loaderData?.publicBaseUrl || (data as any)?.publicBaseUrl || "https://studojo.com";
+  const publicUrl = internship ? `${publicBaseUrl}/internships/${internship.slug}` : "";
   const navigate = useNavigate();
   const { isAuthorized, isPending } = useOpsGuard();
+
+  // WhatsApp outreach message (generated on demand, not persisted).
+  const [waMessage, setWaMessage] = useState<string | null>(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waCopied, setWaCopied] = useState(false);
+
+  const generateWhatsApp = async () => {
+    if (!internship) return;
+    setWaLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const response = await fetch(`/api/internships/${internship.id}/whatsapp`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to generate WhatsApp message");
+      }
+      setWaMessage(result.message);
+    } catch (error: any) {
+      console.error("Error generating WhatsApp message:", error);
+      toast.error(error.message || "Failed to generate WhatsApp message");
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  // Auto-generate once when viewing a published opening.
+  useEffect(() => {
+    if (internship?.status === "published" && waMessage === null && !waLoading) {
+      generateWhatsApp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [internship?.status]);
+
+  const copyWhatsApp = async () => {
+    if (!waMessage) return;
+    try {
+      await navigator.clipboard.writeText(waMessage);
+      setWaCopied(true);
+      toast.success("WhatsApp message copied");
+      setTimeout(() => setWaCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  };
 
   const handleSubmit = async (formData: any) => {
     if (!internship) return;
@@ -129,19 +188,64 @@ export default function EditInternship({ data }: Route.ComponentProps) {
         </div>
 
         {internship.status === "published" && (
-          <div className="mt-6 rounded-lg border-2 border-neutral-900 bg-violet-50 p-4">
-            <p className="mb-2 font-['Satoshi'] font-medium text-neutral-900">
-              Public URL:
-            </p>
-            <a
-              href={`${typeof window !== "undefined" ? window.location.origin.replace(":3002", ":3000") : ""}/internships/${internship.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-['Satoshi'] text-violet-600 hover:underline break-all"
-            >
-              {typeof window !== "undefined" ? window.location.origin.replace(":3002", ":3000") : ""}/internships/{internship.slug}
-            </a>
-          </div>
+          <>
+            <div className="mt-6 rounded-lg border-2 border-neutral-900 bg-violet-50 p-4">
+              <p className="mb-2 font-['Satoshi'] font-medium text-neutral-900">
+                Public URL:
+              </p>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-['Satoshi'] text-violet-600 hover:underline break-all"
+              >
+                {publicUrl}
+              </a>
+            </div>
+
+            <div className="mt-6 rounded-lg border-2 border-neutral-900 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="font-['Satoshi'] font-medium text-neutral-900">
+                  WhatsApp message
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={generateWhatsApp}
+                    disabled={waLoading}
+                    className="rounded-lg border-2 border-neutral-900 bg-white px-3 py-1.5 font-['Satoshi'] text-sm font-medium hover:bg-neutral-100 disabled:opacity-50"
+                  >
+                    {waLoading ? "Generating..." : waMessage ? "Regenerate" : "Generate"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copyWhatsApp}
+                    disabled={!waMessage || waLoading}
+                    className="rounded-lg border-2 border-neutral-900 bg-violet-600 px-3 py-1.5 font-['Satoshi'] text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                  >
+                    {waCopied ? "Copied!" : "Copy WhatsApp Message"}
+                  </button>
+                </div>
+              </div>
+              {waLoading && !waMessage ? (
+                <p className="font-['Satoshi'] text-sm text-gray-600">
+                  Generating message...
+                </p>
+              ) : waMessage ? (
+                <textarea
+                  readOnly
+                  value={waMessage}
+                  rows={12}
+                  className="w-full whitespace-pre-wrap rounded-lg border-2 border-neutral-900 px-4 py-3 font-['Satoshi'] text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              ) : (
+                <p className="font-['Satoshi'] text-sm text-gray-600">
+                  No message yet. Click Generate to create a WhatsApp blast with
+                  the public link.
+                </p>
+              )}
+            </div>
+          </>
         )}
       </div>
     </DashboardLayout>

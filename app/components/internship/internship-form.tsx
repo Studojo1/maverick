@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TipTapEditor } from "../blog/tiptap-editor";
 import { CompanySelector } from "./company-selector";
 import { QuestionBuilder, type Question } from "./question-builder";
@@ -22,9 +22,13 @@ interface InternshipFormProps {
   };
   onSubmit: (data: any) => Promise<void>;
   onCancel?: () => void;
+  /** Override the submit button label. Defaults to Update/Create based on initialData. */
+  submitLabel?: string;
+  /** Fired with the current form values whenever they change (used to persist an in-progress draft). */
+  onDraftChange?: (data: any) => void;
 }
 
-export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFormProps) {
+export function InternshipForm({ initialData, onSubmit, onCancel, submitLabel, onDraftChange }: InternshipFormProps) {
   const { showAlert } = useModal();
   const [title, setTitle] = useState(initialData?.title || "");
   const [companyId, setCompanyId] = useState<string | null>(initialData?.company_id || null);
@@ -44,6 +48,24 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
   );
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
+
+  // Report current values upward so the parent can persist an in-progress draft.
+  useEffect(() => {
+    if (!onDraftChange) return;
+    onDraftChange({
+      title,
+      company_id: companyId,
+      company_name: companyName,
+      description,
+      requirements,
+      location,
+      duration,
+      stipend,
+      application_deadline: applicationDeadline || null,
+      status,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, companyId, companyName, description, requirements, location, duration, stipend, applicationDeadline, status]);
 
   const handleCompanyChange = (id: string | null, name: string) => {
     setCompanyId(id);
@@ -128,6 +150,7 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
           value={companyId}
           onChange={handleCompanyChange}
           onCreateNew={handleCreateCompany}
+          initialName={initialData?.company_name}
         />
       </div>
 
@@ -243,7 +266,13 @@ export function InternshipForm({ initialData, onSubmit, onCancel }: InternshipFo
           disabled={loading}
           className="flex-1 rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-3 font-['Satoshi'] font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Saving..." : initialData ? "Update Internship" : "Create Internship"}
+          {loading
+            ? "Saving..."
+            : submitLabel
+            ? submitLabel
+            : initialData
+            ? "Update Internship"
+            : "Create Internship"}
         </button>
       </div>
     </form>
