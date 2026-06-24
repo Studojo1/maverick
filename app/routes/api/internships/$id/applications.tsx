@@ -2,6 +2,7 @@ import type { Route } from "./+types/$id.applications";
 import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
+import { ensureResumeDownloadedColumn } from "~/lib/resume-download.server";
 
 // GET /api/internships/:id/applications - List applications (admin only)
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -27,6 +28,9 @@ export async function loader({ params, request }: Route.LoaderArgs) {
   const { id: internshipId } = params;
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
+
+  // Make sure the download-tracking column exists so ia.* surfaces it.
+  await ensureResumeDownloadedColumn();
 
   // LEFT JOINs: resume_id is nullable for direct PDF uploads (migration 0018),
   // and we want to surface applications even if the user row was later deleted.
@@ -84,6 +88,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
         user_email: row.user_email,
         user_phone: row.user_phone,
         resume_name: row.resume_name,
+        resume_downloaded_at: row.resume_downloaded_at ?? null,
         question_responses: responses.rows.map((resp: any) => ({
           question_id: resp.question_id,
           question_text: resp.question_text,

@@ -75,6 +75,7 @@ interface Application {
   user_email?: string;
   user_phone?: string | null;
   resume_name?: string;
+  resume_downloaded_at?: string | null;
   question_responses?: QuestionResponse[];
 }
 
@@ -94,6 +95,7 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     userName: string;
   } | null>(null);
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const [downloadingZip, setDownloadingZip] = useState<"new" | "all" | null>(null);
 
   useEffect(() => {
     if (isAuthorized && internship) {
@@ -257,6 +259,64 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
     }
   };
 
+  const handleDownloadZip = async (scope: "new" | "all") => {
+    if (!internship) return;
+    setDownloadingZip(scope);
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/internships/${internship.id}/applications/download-zip?scope=${scope}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to download resumes");
+      }
+
+      // When there is nothing to bundle the API returns JSON, not a zip.
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const info = await response.json();
+        toast.info(info.message || "No resumes to download.");
+        return;
+      }
+
+      const count = response.headers.get("X-Resume-Count");
+      const blob = await response.blob();
+
+      // Pull the "company - role.zip" name straight from the response header.
+      let filename = "resumes.zip";
+      const disposition = response.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      if (match) filename = match[1];
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(
+        `Downloaded ${count || ""} resume${count === "1" ? "" : "s"}`.trim()
+      );
+      // Refresh so the freshly downloaded rows show as downloaded.
+      loadApplications();
+    } catch (error) {
+      console.error("Error downloading resumes:", error);
+      toast.error("Failed to download resumes");
+    } finally {
+      setDownloadingZip(null);
+    }
+  };
+
   if (isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -274,17 +334,39 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8">
           <button
-            onClick={() => navigate(`/internships/${internship.id}`)}
+            onClick={() => navigate("/internships")}
             className="mb-4 text-violet-600 hover:underline font-['Satoshi']"
           >
-            ← Back to Internship
+            ← Back to Internships
           </button>
-          <h1 className="mb-2 font-['Clash_Display'] text-4xl font-bold text-neutral-900">
-            Applications: {internship.title}
-          </h1>
-          <p className="font-['Satoshi'] text-gray-600">
-            {internship.company_name}
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="mb-2 font-['Clash_Display'] text-4xl font-bold text-neutral-900">
+                Applications: {internship.title}
+              </h1>
+              <p className="font-['Satoshi'] text-gray-600">
+                {internship.company_name}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => handleDownloadZip("new")}
+                disabled={downloadingZip !== null}
+                className="flex items-center gap-2 rounded-lg border-2 border-neutral-900 bg-violet-600 px-4 py-2 font-['Satoshi'] font-bold text-white shadow-[4px_4px_0px_0px_rgba(25,26,35,1)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(25,26,35,1)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FiDownload className="h-4 w-4" />
+                {downloadingZip === "new" ? "Preparing..." : "Download new resumes"}
+              </button>
+              <button
+                onClick={() => handleDownloadZip("all")}
+                disabled={downloadingZip !== null}
+                className="flex items-center gap-2 rounded-lg border-2 border-neutral-900 bg-white px-4 py-2 font-['Satoshi'] font-medium text-neutral-900 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FiDownload className="h-4 w-4" />
+                {downloadingZip === "all" ? "Preparing..." : "Download all resumes"}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mb-6 flex items-center gap-4">
@@ -363,9 +445,11 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                   const isExpanded = expandedApplications.has(app.id);
                   const hasResponses = app.question_responses && app.question_responses.length > 0;
                   
+                  const isDownloaded = Boolean(app.resume_downloaded_at);
+
                   return (
                     <React.Fragment key={app.id}>
-                      <tr>
+                      <tr className={isDownloaded ? "bg-sky-100" : undefined}>
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       <input
                         type="checkbox"
@@ -392,6 +476,11 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
                     <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                       <div className="flex items-center gap-2">
                         <span>{app.resume_name || "N/A"}</span>
+                        {isDownloaded && (
+                          <span className="rounded-full bg-sky-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                            Downloaded
+                          </span>
+                        )}
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => handleViewResume(app.id, app.resume_name || "Resume", app.user_name || "Student")}
