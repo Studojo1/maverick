@@ -3,6 +3,10 @@ import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
 import slugify from "slugify";
+import {
+  ensurePipelineStatusColumn,
+  isPipelineStatus,
+} from "~/lib/internship-status.server";
 
 // GET /api/internships/:id - Get internship (admin only)
 export async function loader({ params, request }: Route.LoaderArgs) {
@@ -73,7 +77,19 @@ export async function action({ params, request }: Route.ActionArgs) {
 
   // Handle PUT request
   const body = await request.json();
-  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status } = body;
+  const { title, company_name, company_id, description, requirements, location, duration, stipend, application_deadline, status, pipeline_status } = body;
+
+  // Internal pipeline label (separate from the public `status`). Only update it
+  // when a valid value is supplied; this never affects public visibility. If
+  // the column can't be provisioned, skip it entirely so edits still work.
+  const hasPipelineColumn = await ensurePipelineStatusColumn();
+  const pipelineStatusValue =
+    pipeline_status !== undefined && isPipelineStatus(pipeline_status)
+      ? pipeline_status
+      : null;
+  const pipelineStatusAssignment = hasPipelineColumn
+    ? sql`pipeline_status = COALESCE(${pipelineStatusValue}, pipeline_status),`
+    : sql``;
 
   // Check if internship exists
   const existingResult = await db.execute(
@@ -120,6 +136,7 @@ export async function action({ params, request }: Route.ActionArgs) {
         stipend = COALESCE(${stipend || null}, stipend),
         application_deadline = COALESCE(${application_deadline ? new Date(application_deadline) : null}, application_deadline),
         status = COALESCE(${status || null}, status),
+        ${pipelineStatusAssignment}
         slug = ${slug},
         updated_at = NOW()
       WHERE id = ${id}

@@ -17,11 +17,38 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
+type PipelineStatus =
+  | "published"
+  | "applications_sent"
+  | "interviews"
+  | "closed";
+
+// Internal pipeline tracker shown in the table. This is separate from the
+// public `status` field and never changes what shows on studojo.com.
+const PIPELINE_OPTIONS: {
+  value: PipelineStatus;
+  label: string;
+  rowClass: string;
+}[] = [
+  { value: "published", label: "Published", rowClass: "bg-sky-100" },
+  { value: "applications_sent", label: "Applications sent", rowClass: "bg-green-100" },
+  { value: "interviews", label: "Interviews going on", rowClass: "bg-yellow-100" },
+  { value: "closed", label: "Closed", rowClass: "bg-red-100" },
+];
+
+function pipelineRowClass(status: string | null | undefined): string {
+  return (
+    PIPELINE_OPTIONS.find((o) => o.value === status)?.rowClass ?? "bg-sky-100"
+  );
+}
+
 interface Internship {
   id: string;
   title: string;
   company_name: string;
   status: "draft" | "published" | "closed";
+  /** Internal pipeline label (separate from public status). */
+  pipeline_status?: PipelineStatus | null;
   slug: string;
   view_count: number;
   click_count: number;
@@ -118,6 +145,47 @@ export default function InternshipsList() {
     } catch (error) {
       console.error("Error deleting internship:", error);
       toast.error("Failed to delete internship");
+    }
+  };
+
+  const handlePipelineStatusChange = async (
+    id: string,
+    next: PipelineStatus
+  ) => {
+    const previous = internships.find((i) => i.id === id)?.pipeline_status;
+    // Optimistic update so the row recolours instantly.
+    setInternships((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, pipeline_status: next } : i))
+    );
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast.error("Not authenticated");
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(`/api/internships/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ pipeline_status: next }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+      // Roll back the optimistic change.
+      setInternships((prev) =>
+        prev.map((i) =>
+          i.id === id ? { ...i, pipeline_status: previous } : i
+        )
+      );
     }
   };
 
@@ -222,8 +290,13 @@ export default function InternshipsList() {
                 <tbody>
                   {internships.map((internship, index) => {
                     const serialNumber = (page - 1) * 10 + index + 1;
+                    const pipelineStatus =
+                      internship.pipeline_status || "published";
                     return (
-                      <tr key={internship.id}>
+                      <tr
+                        key={internship.id}
+                        className={pipelineRowClass(pipelineStatus)}
+                      >
                         <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                           {serialNumber}
                         </td>
@@ -239,17 +312,22 @@ export default function InternshipsList() {
                           {internship.company_name}
                         </td>
                         <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
-                          <span
-                            className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                              internship.status === "published"
-                                ? "bg-green-100 text-green-700"
-                                : internship.status === "draft"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
+                          <select
+                            value={pipelineStatus}
+                            onChange={(e) =>
+                              handlePipelineStatusChange(
+                                internship.id,
+                                e.target.value as PipelineStatus
+                              )
+                            }
+                            className="w-full rounded-lg border-2 border-neutral-900 bg-white px-2 py-1 font-['Satoshi'] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-violet-500"
                           >
-                            {internship.status}
-                          </span>
+                            {PIPELINE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className="border-2 border-neutral-900 px-4 py-2 font-['Satoshi']">
                           {internship.view_count}

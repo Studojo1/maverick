@@ -3,6 +3,7 @@ import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
 import slugify from "slugify";
+import { ensurePipelineStatusColumn } from "~/lib/internship-status.server";
 
 // GET /api/internships - List all (admin only)
 export async function loader({ request }: Route.LoaderArgs) {
@@ -33,8 +34,12 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const offset = (page - 1) * limit;
 
+  // Make sure the internal pipeline_status column exists so SELECT * returns it.
+  await ensurePipelineStatusColumn();
+
   // Always exclude scraper-inserted rows (map data only, not for Maverick)
   let whereClause = sql`created_by IS DISTINCT FROM 'scraper-system'`;
+
 
   if (status && status !== "all") {
     whereClause = sql`${whereClause} AND status = ${status}`;
