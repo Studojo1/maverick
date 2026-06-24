@@ -13,12 +13,15 @@ interface CompanySelectorProps {
   value: string | null;
   onChange: (companyId: string | null, companyName: string) => void;
   onCreateNew?: (companyName: string) => Promise<Company>;
+  /** Seed the visible input when there is no selected company id yet (e.g. an AI-extracted name). */
+  initialName?: string;
 }
 
 export function CompanySelector({
   value,
   onChange,
   onCreateNew,
+  initialName,
 }: CompanySelectorProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -33,6 +36,15 @@ export function CompanySelector({
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  // Seed the input with an externally supplied name (e.g. AI-extracted) when
+  // nothing is selected yet, so the reviewer can see and confirm/create it.
+  useEffect(() => {
+    if (!value && initialName && searchQuery.trim() === "") {
+      setSearchQuery(initialName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialName, value]);
 
   useEffect(() => {
     if (value && companies.length > 0) {

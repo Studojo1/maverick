@@ -23,7 +23,12 @@ export default [
   route("internships/:id/applications", "routes/internships/$id/applications.tsx"),
   // Internships API
   route("api/internships", "routes/api/internships/route.tsx"),
+  route("api/internships/generate", "routes/api/internships/generate.tsx"),
   route("api/internships/:id", "routes/api/internships/$id.tsx"),
+  route(
+    "api/internships/:id/whatsapp",
+    "routes/api/internships/$id/whatsapp.tsx"
+  ),
   route(
     "api/internships/:id/applications",
     "routes/api/internships/$id/applications.tsx"
