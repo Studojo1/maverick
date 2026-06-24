@@ -122,7 +122,7 @@ export default function NewInternship() {
         throw new Error(result.error || "Failed to generate opening");
       }
 
-      setInitialData({ ...result.opening, status: "draft" });
+      setInitialData({ ...result.opening });
       setStage("form");
       toast.success("Draft generated. Review and edit before publishing.");
     } catch (error: any) {

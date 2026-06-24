@@ -43,8 +43,10 @@ export function InternshipForm({ initialData, onSubmit, onCancel, submitLabel, o
       ? new Date(initialData.application_deadline).toISOString().split("T")[0]
       : ""
   );
-  const [status, setStatus] = useState<"draft" | "published" | "closed">(
-    initialData?.status || "draft"
+  // No status picker in the UI: new openings publish directly, edits keep their
+  // existing status.
+  const [status] = useState<"draft" | "published" | "closed">(
+    initialData?.status || "published"
   );
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -229,22 +231,6 @@ export function InternshipForm({ initialData, onSubmit, onCancel, submitLabel, o
             className="w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
         </div>
-      </div>
-
-      <div>
-        <label className="mb-2 block font-['Satoshi'] font-medium text-neutral-900">
-          Status *
-        </label>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "draft" | "published" | "closed")}
-          required
-          className="w-full rounded-lg border-2 border-neutral-900 px-4 py-2 font-['Satoshi'] focus:outline-none focus:ring-2 focus:ring-violet-500"
-        >
-          <option value="draft">Draft</option>
-          <option value="published">Published</option>
-          <option value="closed">Closed</option>
-        </select>
       </div>
 
       <div className="rounded-lg border-2 border-neutral-900 bg-violet-50 p-6">

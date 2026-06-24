@@ -179,17 +179,9 @@ export default function EditInternship({ data }: Route.ComponentProps) {
           </p>
         </div>
 
-        <div className="rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden">
-          <InternshipForm
-            initialData={internship}
-            onSubmit={handleSubmit}
-            onCancel={() => navigate("/internships")}
-          />
-        </div>
-
         {internship.status === "published" && (
           <>
-            <div className="mt-6 rounded-lg border-2 border-neutral-900 bg-violet-50 p-4">
+            <div className="mb-6 rounded-lg border-2 border-neutral-900 bg-violet-50 p-4">
               <p className="mb-2 font-['Satoshi'] font-medium text-neutral-900">
                 Public URL:
               </p>
@@ -203,7 +195,7 @@ export default function EditInternship({ data }: Route.ComponentProps) {
               </a>
             </div>
 
-            <div className="mt-6 rounded-lg border-2 border-neutral-900 bg-white p-4">
+            <div className="mb-6 rounded-lg border-2 border-neutral-900 bg-white p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p className="font-['Satoshi'] font-medium text-neutral-900">
                   WhatsApp message
@@ -247,6 +239,14 @@ export default function EditInternship({ data }: Route.ComponentProps) {
             </div>
           </>
         )}
+
+        <div className="rounded-lg border-2 border-neutral-900 bg-white p-8 overflow-hidden">
+          <InternshipForm
+            initialData={internship}
+            onSubmit={handleSubmit}
+            onCancel={() => navigate("/internships")}
+          />
+        </div>
       </div>
     </DashboardLayout>
   );
