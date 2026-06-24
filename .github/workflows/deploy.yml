@@ -73,6 +73,21 @@ jobs:
             --name ${{ secrets.AKS_CLUSTER_NAME }} \
             --overwrite-existing
 
+      - name: Ensure Azure OpenAI secret
+        run: |
+          kubectl create secret generic maverick-azure-openai \
+            --namespace studojo \
+            --from-literal=AZURE_OPENAI_ENDPOINT="${{ secrets.MAVERICK_AZURE_OPENAI_ENDPOINT }}" \
+            --from-literal=AZURE_OPENAI_API_KEY="${{ secrets.MAVERICK_AZURE_OPENAI_API_KEY }}" \
+            --from-literal=AZURE_OPENAI_DEPLOYMENT="${{ secrets.MAVERICK_AZURE_OPENAI_DEPLOYMENT }}" \
+            --from-literal=AZURE_OPENAI_API_VERSION="${{ secrets.MAVERICK_AZURE_OPENAI_API_VERSION }}" \
+            --save-config --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Wire Azure OpenAI env into deployment
+        run: |
+          kubectl set env deployment/${{ env.APP_NAME }} -n studojo \
+            --from=secret/maverick-azure-openai
+
       - name: Deploy to Kubernetes
         run: |
           kubectl set image deployment/${{ env.APP_NAME }} ${{ env.APP_NAME }}=${{ env.REGISTRY }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }} -n studojo
