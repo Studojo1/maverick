@@ -3,6 +3,7 @@ import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
 import slugify from "slugify";
+import { ensurePipelineStatusColumn } from "~/lib/internship-status.server";
 
 // GET /api/internships - List all (admin only)
 export async function loader({ request }: Route.LoaderArgs) {
@@ -32,6 +33,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const search = url.searchParams.get("search");
 
   const offset = (page - 1) * limit;
+
+  // Make sure the internal pipeline_status column exists so SELECT * returns it.
+  await ensurePipelineStatusColumn();
 
   let whereClause = sql`1=1`;
   

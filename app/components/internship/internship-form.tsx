@@ -28,6 +28,14 @@ interface InternshipFormProps {
   onDraftChange?: (data: any) => void;
 }
 
+// Public application deadlines are always set to 25 days from today on a new
+// opening, ignoring whatever a pasted JD might claim.
+function defaultDeadline(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 25);
+  return d.toISOString().split("T")[0];
+}
+
 export function InternshipForm({ initialData, onSubmit, onCancel, submitLabel, onDraftChange }: InternshipFormProps) {
   const { showAlert } = useModal();
   const [title, setTitle] = useState(initialData?.title || "");
@@ -41,7 +49,9 @@ export function InternshipForm({ initialData, onSubmit, onCancel, submitLabel, o
   const [applicationDeadline, setApplicationDeadline] = useState(
     initialData?.application_deadline
       ? new Date(initialData.application_deadline).toISOString().split("T")[0]
-      : ""
+      : initialData?.id
+      ? "" // editing an existing opening that has no deadline: leave it blank
+      : defaultDeadline() // new opening (manual or AI generated): 25 days out
   );
   // No status picker in the UI: new openings publish directly, edits keep their
   // existing status.
