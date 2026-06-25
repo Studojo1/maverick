@@ -275,7 +275,14 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to download resumes");
+        let detail = `HTTP ${response.status}`;
+        try {
+          const err = await response.json();
+          if (err?.error) detail = err.error;
+        } catch {
+          // Non-JSON error body; keep the status code.
+        }
+        throw new Error(`Failed to download resumes (${detail})`);
       }
 
       // When there is nothing to bundle the API returns JSON, not a zip.
@@ -309,9 +316,9 @@ export default function ApplicationsList({ data }: Route.ComponentProps) {
       );
       // Refresh so the freshly downloaded rows show as downloaded.
       loadApplications();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error downloading resumes:", error);
-      toast.error("Failed to download resumes");
+      toast.error(error?.message || "Failed to download resumes");
     } finally {
       setDownloadingZip(null);
     }

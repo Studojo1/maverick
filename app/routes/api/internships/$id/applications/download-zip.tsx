@@ -138,10 +138,13 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     }
   }
 
-  // Keep the "company - role" shape; strip only characters illegal in a
-  // filename / Content-Disposition header (spaces and hyphens are fine).
+  // Keep the "company - role" shape. The filename goes into a Content-Disposition
+  // header, which must be ISO-8859-1, so drop any non-ASCII characters (smart
+  // quotes, em dashes, accents) as well as characters illegal in a filename.
+  // Spaces, hyphens and parentheses are fine.
   const zipName =
     `${internship.company_name || "company"} - ${internship.title || "role"}`
+      .replace(/[^\x20-\x7E]/g, "")
       .replace(/[\\/:*?"<>|]/g, "")
       .replace(/\s+/g, " ")
       .trim() || "resumes";
