@@ -74,7 +74,9 @@ export default function EditInternship({ data }: Route.ComponentProps) {
   const [waLoading, setWaLoading] = useState(false);
   const [waCopied, setWaCopied] = useState(false);
 
-  const generateWhatsApp = async () => {
+  // regenerate=false reuses the stored message if there is one; the Regenerate
+  // button passes true to force a fresh generation.
+  const generateWhatsApp = async (regenerate = false) => {
     if (!internship) return;
     setWaLoading(true);
     try {
@@ -85,7 +87,11 @@ export default function EditInternship({ data }: Route.ComponentProps) {
       }
       const response = await fetch(`/api/internships/${internship.id}/whatsapp`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ regenerate }),
       });
       const result = await response.json();
       if (!response.ok) {
@@ -203,7 +209,7 @@ export default function EditInternship({ data }: Route.ComponentProps) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={generateWhatsApp}
+                    onClick={() => generateWhatsApp(true)}
                     disabled={waLoading}
                     className="rounded-lg border-2 border-neutral-900 bg-white px-3 py-1.5 font-['Satoshi'] text-sm font-medium hover:bg-neutral-100 disabled:opacity-50"
                   >
