@@ -2,6 +2,7 @@ import type { Route } from "./+types/$id";
 import { getUserFromRequest } from "~/lib/auth-helper.server";
 import db from "~/lib/db.server";
 import { sql } from "drizzle-orm";
+import { clearStoredMessage } from "~/lib/whatsapp-message-store.server";
 import slugify from "slugify";
 import {
   ensurePipelineStatusColumn,
@@ -143,6 +144,22 @@ export async function action({ params, request }: Route.ActionArgs) {
       RETURNING *
     `
   );
+
+  // Any edit to the fields the message quotes makes a remembered message
+  // stale, so drop it and let the next view regenerate. Changing only the
+  // pipeline status does not affect the wording, so it keeps its message.
+  const contentChanged = [
+    title,
+    company_name,
+    description,
+    requirements,
+    location,
+    duration,
+    stipend,
+  ].some((value) => value !== undefined);
+  if (contentChanged) {
+    await clearStoredMessage(String(id));
+  }
 
   return Response.json({ success: true, internship: updateResult.rows[0] });
 }
