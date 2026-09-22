@@ -199,7 +199,7 @@ export interface BlastOpening {
 
 /** Opening text of the blast. Edit here to change the wording everywhere. */
 export const BLAST_INTRO =
-  "Hey everyone, we have added a bunch of internships to Internship Dojo. Here are the links.";
+  "hey everyone, these are the internship listings for this week,";
 
 const HOOK_SYSTEM_PROMPT = `You write one short hook line per internship for a WhatsApp blast.
 
@@ -207,9 +207,10 @@ You receive a JSON array of openings, each with an "id". Return ONLY a JSON obje
 { "hooks": { "<id>": "<hook>", ... } }
 
 Rules for each hook:
-- ONE line, at most 14 words, no trailing period needed.
-- Say the single most exciting or distinctive thing about that specific role: the product, the impact, the tech, the team, or the perk.
-- Be concrete. "Work on an AI clinical platform used by real doctors" beats "great learning opportunity".
+- ONE line, at most 10 words. Short and punchy, no trailing period.
+- Make it exciting. Say the single most distinctive thing about that specific role: the product, the impact, the tech, the team, or the perk.
+- Be concrete. "validate ai outputs doctors actually rely on" beats "great learning opportunity".
+- Write in ALL LOWERCASE. Do not capitalise anything, not even the first word or proper nouns.
 - Never invent facts that are not supported by the details given. If the details are thin, describe the role honestly in an appealing way.
 - Do not repeat the company name or the role title; those are already shown on the line above.
 - Do not oversell an average role.
@@ -292,9 +293,11 @@ export function buildBlastMessage(
   hooks: Record<string, string> = {}
 ): string {
   const blocks = openings.map((o) => {
-    const lines = [`🏢 ${o.company_name} | ${o.title}`];
+    // House style: lowercase throughout, except the company name (kept as
+    // entered) and the link (never touched, it has to resolve).
+    const lines = [`${o.company_name} | ${o.title.toLocaleLowerCase()}`];
     const hook = hooks[o.id];
-    if (hook) lines.push(hook);
+    if (hook) lines.push(hook.toLocaleLowerCase());
     lines.push(`👉 ${o.applicationUrl}`);
     return lines.join("\n");
   });
