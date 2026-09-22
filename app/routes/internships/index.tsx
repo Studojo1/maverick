@@ -5,6 +5,7 @@ import { useModal } from "~/components/common/modal-context";
 import { getToken } from "~/lib/api";
 import { toast } from "sonner";
 import { DashboardLayout } from "~/components/dashboard/layout";
+import { WhatsAppBlastModal } from "~/components/internship/whatsapp-blast-modal";
 import type { Route } from "./+types/index";
 
 export function meta({}: Route.MetaArgs) {
@@ -66,6 +67,7 @@ export default function InternshipsList() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showWhatsAppBlast, setShowWhatsAppBlast] = useState(false);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -213,12 +215,20 @@ export default function InternshipsList() {
               Manage internship listings
             </p>
           </div>
-          <Link
-            to="/internships/new"
-            className="rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-2 font-['Satoshi'] font-medium text-white transition-colors hover:bg-violet-700"
-          >
-            Create New
-          </Link>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowWhatsAppBlast(true)}
+              className="rounded-lg border-2 border-neutral-900 bg-white px-6 py-2 font-['Satoshi'] font-medium text-neutral-900 transition-colors hover:bg-neutral-100"
+            >
+              WhatsApp message
+            </button>
+            <Link
+              to="/internships/new"
+              className="rounded-lg border-2 border-neutral-900 bg-violet-600 px-6 py-2 font-['Satoshi'] font-medium text-white transition-colors hover:bg-violet-700"
+            >
+              Create New
+            </Link>
+          </div>
         </div>
 
         <div className="mb-6 flex gap-4">
@@ -391,6 +401,10 @@ export default function InternshipsList() {
           </>
         )}
       </div>
+
+      {showWhatsAppBlast && (
+        <WhatsAppBlastModal onClose={() => setShowWhatsAppBlast(false)} />
+      )}
     </DashboardLayout>
   );
 }

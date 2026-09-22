@@ -176,3 +176,131 @@ export async function generateWhatsAppMessage(
 
   return message.trim();
 }
+
+/* -------------------------------------------------------------------------
+ * Bulk WhatsApp blast
+ *
+ * One message listing every internship that is still open, for pasting into
+ * a WhatsApp group. The AI only writes the one line hook per opening; the
+ * message itself is assembled in code (buildBlastMessage) so the links, the
+ * company names and the intro line are always exact and never paraphrased.
+ * ---------------------------------------------------------------------- */
+
+export interface BlastOpening {
+  id: string;
+  title: string;
+  company_name: string;
+  description?: string;
+  requirements?: string;
+  location?: string;
+  stipend?: string;
+  applicationUrl: string;
+}
+
+/** Opening text of the blast. Edit here to change the wording everywhere. */
+export const BLAST_INTRO =
+  "hey everyone, these are the internship listings for this week,";
+
+const HOOK_SYSTEM_PROMPT = `You write one short hook line per internship for a WhatsApp blast.
+
+You receive a JSON array of openings, each with an "id". Return ONLY a JSON object of the form:
+{ "hooks": { "<id>": "<hook>", ... } }
+
+Rules for each hook:
+- ONE line, at most 10 words. Short and punchy, no trailing period.
+- Make it exciting. Say the single most distinctive thing about that specific role: the product, the impact, the tech, the team, or the perk.
+- Be concrete. "validate ai outputs doctors actually rely on" beats "great learning opportunity".
+- Write in ALL LOWERCASE. Do not capitalise anything, not even the first word or proper nouns.
+- Never invent facts that are not supported by the details given. If the details are thin, describe the role honestly in an appealing way.
+- Do not repeat the company name or the role title; those are already shown on the line above.
+- Do not oversell an average role.
+- NEVER use em dashes or en dashes ( — or – ). Use commas, colons or parentheses instead.
+- No emojis, no quotes, no markdown.
+- Include an entry for EVERY id you are given.`;
+
+/** How many openings to describe per model call, to stay well inside limits. */
+const HOOK_BATCH_SIZE = 12;
+
+function stripHtml(value: string | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 600);
+}
+
+/**
+ * Ask the model for a one line hook per opening.
+ *
+ * Never throws: any opening the model skips (or every opening, if the call
+ * fails) simply comes back without a hook, and the blast omits that line.
+ */
+export async function generateOpeningHooks(
+  openings: BlastOpening[]
+): Promise<Record<string, string>> {
+  const hooks: Record<string, string> = {};
+
+  for (let i = 0; i < openings.length; i += HOOK_BATCH_SIZE) {
+    const batch = openings.slice(i, i + HOOK_BATCH_SIZE);
+    const payload = batch.map((o) => ({
+      id: o.id,
+      title: o.title,
+      company: o.company_name,
+      location: o.location || undefined,
+      stipend: o.stipend || undefined,
+      description: stripHtml(o.description) || undefined,
+      requirements: stripHtml(o.requirements) || undefined,
+    }));
+
+    try {
+      const content = await chatCompletion(
+        [
+          { role: "system", content: HOOK_SYSTEM_PROMPT },
+          { role: "user", content: JSON.stringify(payload) },
+        ],
+        { json: true, temperature: 0.6, maxTokens: 1200 }
+      );
+
+      const parsed = parseJsonObject(content);
+      const batchHooks = parsed?.hooks ?? parsed;
+      if (batchHooks && typeof batchHooks === "object") {
+        for (const opening of batch) {
+          const hook = batchHooks[opening.id];
+          if (typeof hook === "string" && hook.trim()) {
+            hooks[opening.id] = hook.trim().replace(/[—–]/g, ",");
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn(
+        "[maverick] hook generation failed for a batch, continuing without hooks:",
+        e?.message
+      );
+    }
+  }
+
+  return hooks;
+}
+
+/**
+ * Assemble the final blast. Pure and deterministic: the same openings and
+ * hooks always produce the same text, and every link is used exactly as given.
+ */
+export function buildBlastMessage(
+  openings: BlastOpening[],
+  hooks: Record<string, string> = {}
+): string {
+  const blocks = openings.map((o) => {
+    // House style: lowercase throughout, except the company name (kept as
+    // entered) and the link (never touched, it has to resolve).
+    const lines = [`${o.company_name} | ${o.title.toLocaleLowerCase()}`];
+    const hook = hooks[o.id];
+    if (hook) lines.push(hook.toLocaleLowerCase());
+    lines.push(`👉 ${o.applicationUrl}`);
+    return lines.join("\n");
+  });
+
+  return [BLAST_INTRO, "", blocks.join("\n\n")].join("\n").trim();
+}
